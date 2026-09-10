@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHERIS | Next-Gen Escrow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans flex flex-col items-center justify-center min-h-screen">
+    <div class="max-w-md w-full p-6 bg-slate-800 rounded-2xl shadow-2xl">
+        <h1 class="text-4xl font-black text-cyan-400 mb-8">AETHERIS</h1>
+        
+        <button id="startMatchBtn" class="w-full bg-blue-600 hover:bg-blue-500 font-bold py-3 px-4 rounded-xl mb-4">
+            Start Match & Share Screen
+        </button>
+
+        <div id="statusBox" class="p-4 bg-slate-900 rounded-lg text-xs font-mono text-cyan-400 hidden"></div>
+        
+        <video id="screenVideo" autoplay muted class="hidden"></video>
+        <canvas id="frameCanvas" class="hidden"></canvas>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startMatchBtn');
+        const video = document.getElementById('screenVideo');
+        const canvas = document.getElementById('frameCanvas');
+        const statusBox = document.getElementById('statusBox');
+        const ctx = canvas.getContext('2d');
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                video.srcObject = stream;
+                statusBox.classList.remove('hidden');
+                statusBox.innerText = ">> Screen capture active. Connecting to AI...";
+
+                // Replace URL once deployed to Render
+                const ws = new WebSocket('wss://YOUR-RENDER-APP-NAME.onrender.com/ws/live-referee/match_001');
+
+                ws.onopen = () => {
+                    setInterval(() => {
+                        if (video.videoWidth) {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            ws.send(canvas.toDataURL('image/jpeg', 0.5)); 
+                        }
+                    }, 3000);
+                };
+
+                ws.onmessage = (event) => {
+                    statusBox.innerText = ">> " + event.data;
+                };
+            } catch (err) {
+                alert("Screen sharing permission required.");
+            }
+        });
+    </script>
+</body>
+</html>
