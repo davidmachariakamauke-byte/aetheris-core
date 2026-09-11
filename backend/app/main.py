@@ -1,3 +1,8 @@
+"""
+AETHERIS Enterprise Esports Engine - v3.0 (Advanced)
+Requirements: pip install fastapi uvicorn google-genai intasend-python pydantic
+"""
+
 import asyncio
 import base64
 import json
@@ -6,14 +11,15 @@ import os
 import time
 import uuid
 from typing import Dict, Optional, Set
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, status, BackgroundTasks
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, status, BackgroundTasks, Request
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
 from google import genai
 from google.genai import types
-
-from app.services.mpesa_rail import MPesaRailService
-from app.services.web3_rail import Web3EscrowService
+from intasend import APIService
 
 # ---------------------------------------------------------------------
 # LOGGING & CONFIGURATION
@@ -25,6 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger("AETHERIS-CORE")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Initialize the new Google GenAI client
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 if not gemini_client:
@@ -32,9 +39,8 @@ if not gemini_client:
 
 app = FastAPI(
     title="AETHERIS Enterprise Esports Engine",
-    version="2.6.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    version="3.0.0",
+    docs_url="/docs"
 )
 
 app.add_middleware(
@@ -45,7 +51,72 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-mpesa_service = MPesaRailService()
+# ---------------------------------------------------------------------
+# INTEGRATED SERVICES (IntaSend & Web3)
+# ---------------------------------------------------------------------
+
+class IntaSendRailService:
+    def __init__(self):
+        self.public_key = os.getenv("INTASEND_PUBLIC_KEY", "")
+        self.secret_key = os.getenv("INTASEND_SECRET_KEY", "")
+        self.test_mode = os.getenv("INTASEND_TEST_MODE", "True").lower() == "true"
+        
+        if self.public_key and self.secret_key:
+            self.service = APIService(
+                public_key=self.public_key,
+                secret_key=self.secret_key,
+                test=self.test_mode
+            )
+        else:
+            self.service = None
+
+    async def initiate_stk_push(self, phone_number: str, amount: float, match_id: str, email: str = "gamer@aetheris.co.ke"):
+        """Triggers an M-Pesa STK Push via IntaSend's hosted masking service."""
+        if not self.service:
+            logger.info(f"[SIMULATED] IntaSend STK Push to {phone_number} for KES {amount}")
+            return {"invoice_id": f"SIM-INV-{uuid.uuid4().hex[:8]}", "state": "PENDING"}
+
+        try:
+            # Run blocking IntaSend API call in a background thread to prevent freezing the event loop
+            response = await asyncio.to_thread(
+                self.service.collect.mpesa_stk_push,
+                phone_number=phone_number,
+                amount=amount,
+                email=email,
+                narrative=f"Aetheris Stake {match_id[:8]}"
+            )
+            return response
+        except Exception as e:
+            logger.error(f"IntaSend Collection Error: {str(e)}")
+            raise e
+
+    async def execute_payout(self, phone_number: str, amount: float, match_id: str):
+        """Sends net winnings automatically to the victor's M-Pesa wallet."""
+        if not self.service:
+            logger.info(f"[SIMULATED] IntaSend Payout of KES {amount} to {phone_number}")
+            return {"transaction_id": f"SIM-TX-{uuid.uuid4().hex[:8]}", "status": "COMPLETE"}
+
+        try:
+            response = await asyncio.to_thread(
+                self.service.payout.mobile_checkout,
+                provider="MPESA",
+                phone_number=phone_number,
+                amount=amount,
+                narrative=f"Aetheris Winnings {match_id[:8]}"
+            )
+            return response
+        except Exception as e:
+            logger.error(f"IntaSend Payout Error: {str(e)}")
+            raise e
+
+class Web3EscrowService:
+    """Handles crypto stakes for non-MPesa users (USDC/USDT on Polygon)."""
+    async def release_escrow(self, match_id: str, winner_address: str, amount: float):
+        logger.info(f"Executing Web3 Smart Contract release of {amount} to {winner_address}")
+        await asyncio.sleep(1) # Simulating block confirmation time
+        return f"0x{uuid.uuid4().hex}{uuid.uuid4().hex}"
+
+intasend_service = IntaSendRailService()
 web3_service = Web3EscrowService()
 
 # ---------------------------------------------------------------------
@@ -53,7 +124,6 @@ web3_service = Web3EscrowService()
 # ---------------------------------------------------------------------
 
 class RefereeVerdict(BaseModel):
-    """Structured Pydantic schema enforced on Gemini 2.5 Flash response."""
     victory_detected: bool = Field(description="True if a definitive victory, checkmate, or game-over summary is visible.")
     winner_identifier: Optional[str] = Field(default=None, description="Extracted winning player tag, username, or side.")
     anomaly_detected: bool = Field(description="True if modded menus, floating overlays, or tampered UI elements are present.")
@@ -69,8 +139,8 @@ class MatchStatus:
 
 class Player(BaseModel):
     player_id: str
-    identifier: str  # Phone number (+254...) or Wallet Address (0x...)
-    rail: str        # "MPESA" or "USDT"
+    identifier: str
+    rail: str  # "INTASEND" or "WEB3"
     stake_amount: float
     staked_status: bool = False
 
@@ -78,6 +148,7 @@ class Match(BaseModel):
     match_id: str
     game_title: str
     game_mode: str
+    max_players: int = 10
     players: Dict[str, Player] = {}
     total_pot: float = 0.0
     status: str = MatchStatus.LOBBY
@@ -92,7 +163,6 @@ db_lock = asyncio.Lock()
 # ---------------------------------------------------------------------
 
 class RoomManager:
-    """Manages multi-client WebSocket broadcasts per match room."""
     def __init__(self):
         self.rooms: Dict[str, Set[WebSocket]] = {}
         self.processing_locks: Dict[str, bool] = {}
@@ -103,7 +173,6 @@ class RoomManager:
             self.rooms[match_id] = set()
             self.processing_locks[match_id] = False
         self.rooms[match_id].add(websocket)
-        logger.info(f"Client connected to room {match_id}. Listeners: {len(self.rooms[match_id])}")
 
     def disconnect(self, match_id: str, websocket: WebSocket):
         if match_id in self.rooms:
@@ -111,7 +180,6 @@ class RoomManager:
             if not self.rooms[match_id]:
                 del self.rooms[match_id]
                 del self.processing_locks[match_id]
-        logger.info(f"Client disconnected from room {match_id}.")
 
     async def broadcast(self, match_id: str, message: dict):
         if match_id in self.rooms:
@@ -131,15 +199,12 @@ room_manager = RoomManager()
 # ---------------------------------------------------------------------
 
 async def adjudicate_frame_advanced(frame_base64: str, game_title: str) -> RefereeVerdict:
-    """Sends gameplay frame to Gemini 2.5 Flash using structured response schemas."""
+    """Utilizes Google GenAI async client for real-time frame evaluation."""
     if not gemini_client:
         await asyncio.sleep(0.02)
         return RefereeVerdict(
-            victory_detected=False,
-            winner_identifier=None,
-            anomaly_detected=False,
-            confidence_score=1.0,
-            status_message="Fallback Mode: Frame clean."
+            victory_detected=False, winner_identifier=None, 
+            anomaly_detected=False, confidence_score=1.0, status_message="Fallback: Clean"
         )
 
     prompt = f"""
@@ -152,8 +217,9 @@ async def adjudicate_frame_advanced(frame_base64: str, game_title: str) -> Refer
 
     try:
         image_bytes = base64.b64decode(frame_base64)
-        response = await asyncio.to_thread(
-            gemini_client.models.generate_content,
+        
+        # Using the official async aio implementation of the new SDK
+        response = await gemini_client.aio.models.generate_content(
             model="gemini-2.5-flash",
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
@@ -165,44 +231,40 @@ async def adjudicate_frame_advanced(frame_base64: str, game_title: str) -> Refer
                 temperature=0.1
             )
         )
+        # Parse the strictly formatted JSON text into our Pydantic schema
         return RefereeVerdict.model_validate_json(response.text)
+        
     except Exception as e:
-        logger.error(f"Gemini Vision Adjudication Error: {str(e)}")
+        logger.error(f"Vision Adjudication Error: {str(e)}")
         return RefereeVerdict(
-            victory_detected=False,
-            winner_identifier=None,
-            anomaly_detected=False,
-            confidence_score=0.0,
-            status_message="Frame Processing Error"
+            victory_detected=False, winner_identifier=None, 
+            anomaly_detected=False, confidence_score=0.0, status_message="Processing Error"
         )
 
 # ---------------------------------------------------------------------
-# ESCROW DISPATCHER & PAYOUT ENGINE
+# ESCROW DISPATCHER & PAYOUT ENGINE (10% LOGIC)
 # ---------------------------------------------------------------------
 
-async def execute_escrow_settlement(match_id: str, winner_id: str, payout_amount: float, rail: str, recipient: str):
-    """Executes disbursement via M-Pesa B2C or Web3 Escrow Smart Contract."""
-    logger.info(f"Initiating settlement for {match_id}: {payout_amount} via {rail} to {recipient}")
+async def execute_escrow_settlement(match_id: str, winner_id: str, total_pot: float, rail: str, recipient: str):
+    """Calculates the 10% platform fee and executes the 90% payout."""
+    
+    platform_cut = total_pot * 0.10
+    winner_payout = total_pot * 0.90
+    
+    logger.info(f"[{match_id}] Settlement Started. Pot: KES {total_pot} | Winner: KES {winner_payout} | Platform Cut: KES {platform_cut}")
     tx_hash = ""
 
     try:
-        if rail.upper() == "MPESA":
-            result = await mpesa_service.execute_b2c_payout(
+        if rail.upper() == "INTASEND":
+            result = await intasend_service.execute_payout(
                 phone_number=recipient,
-                amount=payout_amount,
-                match_id=match_id,
-                result_url=f"https://api.aetheris.gg/callbacks/mpesa/b2c/result",
-                timeout_url=f"https://api.aetheris.gg/callbacks/mpesa/b2c/timeout"
+                amount=winner_payout,
+                match_id=match_id
             )
-            tx_hash = result.get("ConversationID", f"MPESA_TX_{uuid.uuid4().hex[:8]}")
-        elif rail.upper() == "USDT":
-            tx_hash = await web3_service.release_escrow(
-                match_id=match_id,
-                winner_address=recipient,
-                amount=payout_amount
-            )
-        else:
-            tx_hash = f"SIMULATED_TX_{uuid.uuid4().hex[:12].upper()}"
+            tx_hash = result.get("transaction_id", f"INTASEND_{uuid.uuid4().hex[:8]}")
+            
+        elif rail.upper() == "WEB3":
+            tx_hash = await web3_service.release_escrow(match_id, recipient, winner_payout)
 
         async with db_lock:
             if match_id in matches_db:
@@ -213,7 +275,9 @@ async def execute_escrow_settlement(match_id: str, winner_id: str, payout_amount
             "type": "VICTORY_PAYOUT_EXECUTED",
             "match_id": match_id,
             "winner": winner_id,
-            "amount_disbursed": payout_amount,
+            "gross_pot": total_pot,
+            "net_amount_disbursed": winner_payout,
+            "platform_fee_retained": platform_cut,
             "rail": rail,
             "transaction_id": tx_hash
         })
@@ -227,19 +291,28 @@ async def execute_escrow_settlement(match_id: str, winner_id: str, payout_amount
 class CreateMatchReq(BaseModel):
     game_title: str
     game_mode: str
+    max_players: int = Field(default=10, le=10)
     stake_per_player: float = Field(gt=0)
 
 class StakeDepositReq(BaseModel):
     match_id: str
     player_id: str
-    rail: str = Field(pattern="^(MPESA|USDT)$")
+    rail: str = Field(pattern="^(INTASEND|WEB3)$")
     identifier: str
     amount: float = Field(gt=0)
-    callback_url: Optional[str] = None
 
-@app.get("/healthz")
-async def health_check():
-    return {"status": "HEALTHY", "engine": "AETHERIS v2.6.0", "gemini_connected": gemini_client is not None}
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """HTML Root route required by IntaSend domain validator."""
+    return """
+    <html>
+        <head><title>Aetheris Esports</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+            <h1>Aetheris Esports Platform</h1>
+            <p>Live API & Tournament Gateway Operational.</p>
+        </body>
+    </html>
+    """
 
 @app.post("/api/match/create", status_code=status.HTTP_201_CREATED)
 async def create_match(req: CreateMatchReq):
@@ -248,6 +321,7 @@ async def create_match(req: CreateMatchReq):
         match_id=match_id,
         game_title=req.game_title,
         game_mode=req.game_mode,
+        max_players=req.max_players,
         status=MatchStatus.LOBBY
     )
     async with db_lock:
@@ -260,17 +334,18 @@ async def deposit_stake(req: StakeDepositReq):
         if req.match_id not in matches_db:
             raise HTTPException(status_code=404, detail="Match ID not found")
         match = matches_db[req.match_id]
+        
         if match.status != MatchStatus.LOBBY:
             raise HTTPException(status_code=400, detail="Match no longer accepting deposits")
+        if len(match.players) >= match.max_players:
+            raise HTTPException(status_code=400, detail="Lobby is full")
 
     stk_response = None
-    if req.rail.upper() == "MPESA":
-        cb_url = req.callback_url or "https://api.aetheris.gg/callbacks/mpesa/stk"
-        stk_response = await mpesa_service.initiate_stk_push(
+    if req.rail.upper() == "INTASEND":
+        stk_response = await intasend_service.initiate_stk_push(
             phone_number=req.identifier,
             amount=req.amount,
-            match_id=req.match_id,
-            callback_url=cb_url
+            match_id=req.match_id
         )
 
     async with db_lock:
@@ -279,16 +354,19 @@ async def deposit_stake(req: StakeDepositReq):
             identifier=req.identifier,
             rail=req.rail,
             stake_amount=req.amount,
-            staked_status=True
+            staked_status=True  # In production, toggle this True only inside a webhook handler
         )
         match.players[req.player_id] = player
         match.total_pot += req.amount
-        if len(match.players) >= 2:
+        
+        # Start match instantly if 10/10 lobby is full
+        if len(match.players) == match.max_players:
             match.status = MatchStatus.ACTIVE
 
     await room_manager.broadcast(req.match_id, {
         "type": "STAKE_UPDATED",
         "total_pot": match.total_pot,
+        "players_ready": f"{len(match.players)}/{match.max_players}",
         "match_status": match.status
     })
 
@@ -315,6 +393,8 @@ async def spectator_node_endpoint(websocket: WebSocket, match_id: str):
             return
 
     frame_sequence = 0
+    victory_confirmations = 0  # Temporal tracking to prevent false positives
+
     try:
         while True:
             raw_payload = await websocket.receive_text()
@@ -323,6 +403,7 @@ async def spectator_node_endpoint(websocket: WebSocket, match_id: str):
             if room_manager.processing_locks.get(match_id, False):
                 continue
 
+            # Process every 4th frame to manage memory and API quotas
             if frame_sequence % 4 == 0:
                 room_manager.processing_locks[match_id] = True
                 frame_bytes = raw_payload.split(",")[1] if "," in raw_payload else raw_payload
@@ -331,6 +412,7 @@ async def spectator_node_endpoint(websocket: WebSocket, match_id: str):
                 verdict: RefereeVerdict = await adjudicate_frame_advanced(frame_bytes, match_info.game_title)
                 room_manager.processing_locks[match_id] = False
 
+                # Handle Mod/Cheat Detection
                 if verdict.anomaly_detected:
                     async with db_lock:
                         matches_db[match_id].status = MatchStatus.FLAGGED
@@ -342,18 +424,30 @@ async def spectator_node_endpoint(websocket: WebSocket, match_id: str):
                     })
                     break
 
-                if verdict.victory_detected and match_info.status not in [MatchStatus.SETTLED, MatchStatus.ADJUDICATING]:
+                # Require 2 consecutive victory frames to confirm a win (temporal consistency)
+                if verdict.victory_detected:
+                    victory_confirmations += 1
+                else:
+                    victory_confirmations = 0
+
+                # Execute logic once victory is verified
+                if victory_confirmations >= 2 and match_info.status not in [MatchStatus.SETTLED, MatchStatus.ADJUDICATING]:
                     async with db_lock:
                         matches_db[match_id].status = MatchStatus.ADJUDICATING
 
                     winner_id = verdict.winner_identifier or "PLAYER_01"
-                    payout_amount = match_info.total_pot * 0.95
                     winner_profile = match_info.players.get(winner_id)
-                    payout_rail = winner_profile.rail if winner_profile else "MPESA"
+                    payout_rail = winner_profile.rail if winner_profile else "INTASEND"
                     recipient_id = winner_profile.identifier if winner_profile else "+254700000000"
 
                     asyncio.create_task(
-                        execute_escrow_settlement(match_id, winner_id, payout_amount, payout_rail, recipient_id)
+                        execute_escrow_settlement(
+                            match_id=match_id, 
+                            winner_id=winner_id, 
+                            total_pot=match_info.total_pot, 
+                            rail=payout_rail, 
+                            recipient=recipient_id
+                        )
                     )
                     break
 
