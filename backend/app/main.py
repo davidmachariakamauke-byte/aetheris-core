@@ -1,5 +1,5 @@
 """
-AETHERIS Universal Esports Engine - v4.0 (Base Network & Dynamic Lobbies)
+AETHERIS Enterprise Esports Engine - v4.5 (Cyberpunk HUD Gateway)
 File Location: backend/app/main.py or main.py
 """
 
@@ -21,7 +21,7 @@ from google.genai import types
 from intasend import APIService
 
 # ---------------------------------------------------------------------
-# CONFIGURATION & TREASURY WALLET
+# LOGGING & CONFIGURATION
 # ---------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -32,13 +32,12 @@ logger = logging.getLogger("AETHERIS-CORE")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-# Treasury wallet for collecting crypto platform fees on Base L2 Network
+# Backend Treasury wallet for crypto platform fee routing (Hidden from public HTML UI)
 BASE_TREASURY_WALLET = os.getenv("BASE_TREASURY_WALLET", "0xe69aE274c4D814fDB312120d3db1C5c2BD63a071")
-BASE_CHAIN_ID = 8453  # Base Mainnet Chain ID
 
 app = FastAPI(
     title="AETHERIS Esports Engine",
-    version="4.0.0",
+    version="4.5.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -113,7 +112,7 @@ class BaseWeb3EscrowService:
         self.treasury_address = treasury_address
 
     async def release_escrow(self, match_id: str, winner_address: str, net_payout: float, platform_fee: float):
-        logger.info(f"[BASE L2 ESCROW] Match: {match_id} | Net Winner: {winner_address} ({net_payout}) | Treasury: {self.treasury_address} ({platform_fee})")
+        logger.info(f"[BASE L2 ESCROW] Match: {match_id} | Winner: {winner_address} ({net_payout}) | Treasury: {self.treasury_address} ({platform_fee})")
         await asyncio.sleep(0.1)
         return f"0x{uuid.uuid4().hex}{uuid.uuid4().hex}"
 
@@ -148,7 +147,7 @@ class Player(BaseModel):
 class Match(BaseModel):
     match_id: str
     game_title: str
-    game_mode: str  # e.g. "1v1 Chess", "2v2 Ludo", "Free-For-All Mini Militia", "PES"
+    game_mode: str
     min_players: int = 2
     max_players: int = 2
     players: Dict[str, Player] = {}
@@ -246,7 +245,7 @@ async def execute_escrow_settlement(match_id: str, winner_id: str, total_pot: fl
     platform_cut = total_pot * 0.10
     winner_payout = total_pot * 0.90
     
-    logger.info(f"[{match_id}] Settlement: Total Pot = {total_pot} | Winner = {winner_payout} | Treasury Fee = {platform_cut} to {BASE_TREASURY_WALLET}")
+    logger.info(f"[{match_id}] Settlement: Total Pot = {total_pot} | Winner = {winner_payout} | Treasury Fee = {platform_cut}")
     tx_hash = ""
 
     try:
@@ -277,7 +276,6 @@ async def execute_escrow_settlement(match_id: str, winner_id: str, total_pot: fl
             "total_pot": total_pot,
             "net_disbursed": winner_payout,
             "platform_retained": platform_cut,
-            "treasury_wallet": BASE_TREASURY_WALLET,
             "rail": rail,
             "transaction_id": tx_hash
         })
@@ -289,8 +287,8 @@ async def execute_escrow_settlement(match_id: str, winner_id: str, total_pot: fl
 # ---------------------------------------------------------------------
 
 class CreateMatchReq(BaseModel):
-    game_title: str  # e.g., "Chess", "Ludo", "PES", "Mini Militia"
-    game_mode: str   # e.g., "1v1 Blitz", "4-Player FFA"
+    game_title: str
+    game_mode: str
     min_players: int = Field(default=2, ge=2)
     max_players: int = Field(default=2, ge=2)
     stake_per_player: float = Field(gt=0)
@@ -299,31 +297,245 @@ class StakeDepositReq(BaseModel):
     match_id: str
     player_id: str
     rail: str = Field(pattern="^(INTASEND|WEB3_BASE)$")
-    identifier: str  # M-Pesa Phone Number or Base Wallet Address
+    identifier: str
     amount: float = Field(gt=0)
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Domain landing page required for IntaSend and operational status."""
-    return f"""
+    """Futuristic Cyberpunk Esports Gateway Interface."""
+    return """
     <!DOCTYPE html>
-    <html>
-        <head>
-            <title>Aetheris Esports Engine</title>
-            <style>
-                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; padding-top: 80px; background-color: #0d1117; color: #c9d1d9; }}
-                h1 {{ color: #58a6ff; font-size: 2.5rem; margin-bottom: 10px; }}
-                p {{ color: #8b949e; font-size: 1.1rem; }}
-                .badge {{ display: inline-block; padding: 6px 16px; background-color: #161b22; border: 1px solid #30363d; border-radius: 20px; color: #3fb950; font-weight: 600; margin-top: 15px; }}
-                .treasury {{ margin-top: 25px; font-size: 0.85rem; color: #8b949e; font-family: monospace; }}
-            </style>
-        </head>
-        <body>
-            <h1>AETHERIS Esports Engine</h1>
-            <p>Universal Gaming Infrastructure & AI Referee Active</p>
-            <div class="badge">&#9679; Base L2 & M-Pesa Rails Operational</div>
-            <div class="treasury">Fee Treasury: {BASE_TREASURY_WALLET} (Base Chain 8453)</div>
-        </body>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AETHERIS // Universal Esports Engine</title>
+        <style>
+            :root {
+                --neon-cyan: #00f3ff;
+                --neon-pink: #ff007f;
+                --neon-green: #00ff66;
+                --dark-bg: #06090e;
+                --card-bg: rgba(14, 20, 31, 0.75);
+                --border-color: rgba(0, 243, 255, 0.25);
+            }
+            
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            }
+
+            body {
+                background-color: var(--dark-bg);
+                color: #e2e8f0;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                overflow-x: hidden;
+                position: relative;
+            }
+
+            /* Animated Background Grid & Scanline */
+            body::before {
+                content: "";
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: 
+                    linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+                background-size: 30px 30px;
+                z-index: 0;
+                pointer-events: none;
+            }
+
+            .container {
+                position: relative;
+                z-index: 1;
+                max-width: 480px;
+                width: 100%;
+                background: var(--card-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 20px;
+                padding: 35px 25px;
+                text-align: center;
+                box-shadow: 0 0 40px rgba(0, 243, 255, 0.15), inset 0 0 15px rgba(0, 243, 255, 0.05);
+                backdrop-filter: blur(12px);
+            }
+
+            /* Animated Logo Graphic */
+            .logo-icon {
+                width: 80px;
+                height: 80px;
+                margin: 0 auto 20px;
+                filter: drop-shadow(0 0 12px var(--neon-cyan));
+                animation: float 4s ease-in-out infinite;
+            }
+
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-8px); }
+            }
+
+            h1 {
+                font-size: 1.8rem;
+                font-weight: 900;
+                letter-spacing: 2px;
+                background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+            }
+
+            .subtitle {
+                font-size: 0.85rem;
+                color: #94a3b8;
+                letter-spacing: 1px;
+                margin-bottom: 25px;
+                text-transform: uppercase;
+            }
+
+            /* Neon Glowing HAVE FUN Banner */
+            .fun-banner {
+                margin: 20px 0;
+                padding: 12px 18px;
+                border-radius: 12px;
+                background: rgba(255, 0, 127, 0.1);
+                border: 1px solid rgba(255, 0, 127, 0.4);
+                color: #ffffff;
+                font-size: 1rem;
+                font-weight: 800;
+                letter-spacing: 2.5px;
+                text-transform: uppercase;
+                text-shadow: 0 0 10px var(--neon-pink);
+                animation: neonPulse 2s infinite alternate;
+            }
+
+            @keyframes neonPulse {
+                0% { box-shadow: 0 0 5px rgba(255, 0, 127, 0.2); }
+                100% { box-shadow: 0 0 20px rgba(255, 0, 127, 0.6); }
+            }
+
+            /* HUD Telemetry Node Grid */
+            .hud-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                margin-top: 25px;
+            }
+
+            .hud-card {
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 12px;
+                padding: 12px;
+                font-size: 0.75rem;
+            }
+
+            .hud-card .label {
+                color: #64748b;
+                margin-bottom: 4px;
+                font-size: 0.7rem;
+                text-transform: uppercase;
+            }
+
+            .hud-card .value {
+                color: var(--neon-cyan);
+                font-weight: 700;
+                font-family: monospace;
+            }
+
+            .status-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 16px;
+                background: rgba(0, 255, 102, 0.1);
+                border: 1px solid rgba(0, 255, 102, 0.3);
+                border-radius: 30px;
+                color: var(--neon-green);
+                font-size: 0.8rem;
+                font-weight: 700;
+                margin-bottom: 15px;
+            }
+
+            .dot {
+                width: 8px;
+                height: 8px;
+                background-color: var(--neon-green);
+                border-radius: 50%;
+                box-shadow: 0 0 8px var(--neon-green);
+                animation: blink 1.5s infinite;
+            }
+
+            @keyframes blink {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.3; }
+            }
+
+            .anti-cheat-note {
+                font-size: 0.7rem;
+                color: #64748b;
+                margin-top: 20px;
+                line-height: 1.4;
+            }
+
+            .anti-cheat-note span {
+                color: var(--neon-pink);
+                font-weight: 600;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <!-- Animated Shield SVG Icon -->
+            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="#00f3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                <path d="M12 8v4"></path>
+                <path d="M12 16h.01"></path>
+            </svg>
+
+            <h1>AETHERIS</h1>
+            <div class="subtitle">Universal Esports Gateway</div>
+
+            <div class="status-badge">
+                <div class="dot"></div>
+                ENGINE ONLINE & ACTIVE
+            </div>
+
+            <div class="fun-banner">
+                🎮 HAVE FUN & PLAY FAIR ⚡
+            </div>
+
+            <div class="hud-grid">
+                <div class="hud-card">
+                    <div class="label">AI Referee</div>
+                    <div class="value">Gemini Vision 2.5</div>
+                </div>
+                <div class="hud-card">
+                    <div class="label">Payment Rails</div>
+                    <div class="value">M-Pesa + Base L2</div>
+                </div>
+                <div class="hud-card">
+                    <div class="label">Anti-Cheat Mode</div>
+                    <div class="value" style="color: var(--neon-green);">ACTIVE ENFORCEMENT</div>
+                </div>
+                <div class="hud-card">
+                    <div class="label">Latency Engine</div>
+                    <div class="value">&lt; 15ms Node</div>
+                </div>
+            </div>
+
+            <p class="anti-cheat-note">
+                <span>⚠️ FAIR PLAY MANDATE:</span> Real-time vision telemetry actively flags modded APKs, speed hacks, and cheat overlays. Zero-tolerance auto-forfeiture enabled.
+            </p>
+        </div>
+    </body>
     </html>
     """
 
@@ -331,9 +543,8 @@ async def root():
 async def health_check():
     return {
         "status": "HEALTHY",
-        "engine": "AETHERIS v4.0.0",
-        "gemini_vision": gemini_client is not None,
-        "base_treasury": BASE_TREASURY_WALLET
+        "engine": "AETHERIS v4.5.0",
+        "gemini_vision": gemini_client is not None
     }
 
 @app.post("/api/match/create", status_code=status.HTTP_201_CREATED)
@@ -382,7 +593,6 @@ async def deposit_stake(req: StakeDepositReq):
         match.players[req.player_id] = player
         match.total_pot += req.amount
         
-        # Auto-start match when minimum required players have staked
         if len(match.players) >= match.min_players:
             match.status = MatchStatus.ACTIVE
 
@@ -418,7 +628,7 @@ async def spectator_node_endpoint(websocket: WebSocket, match_id: str):
     # Send mandatory anti-cheat warning banner upon connection
     await websocket.send_json({
         "type": "FAIR_PLAY_WARNING",
-        "notice": "⚠️ FAIR PLAY ENFORCED: Any mode of cheating, modded APKs, or floating hack overlays will be flagged instantly. Play fair and have fun!"
+        "notice": "⚠️ FAIR PLAY ENFORCED: Any mode of cheating, modded APKs, or floating hack overlays will be flagged instantly. HAVE FUN & PLAY FAIR!"
     })
 
     frame_sequence = 0
