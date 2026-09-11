@@ -1,5 +1,5 @@
 """
-AETHERIS Enterprise Esports Engine - v4.6 (Full Payment & World HUD)
+AETHERIS Enterprise Esports Engine - v4.7 (Cyber Emblem Edition)
 File Location: backend/app/main.py or main.py
 """
 
@@ -36,7 +36,7 @@ BASE_TREASURY_WALLET = os.getenv("BASE_TREASURY_WALLET", "0xe69aE274c4D814fDB312
 
 app = FastAPI(
     title="AETHERIS Esports Engine",
-    version="4.6.0",
+    version="4.7.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -123,7 +123,7 @@ base_web3_service = BaseWeb3EscrowService(treasury_address=BASE_TREASURY_WALLET)
 class RefereeVerdict(BaseModel):
     victory_detected: bool = Field(description="True if match conclusion screen is detected.")
     winner_identifier: Optional[str] = Field(default=None, description="Winning player tag or username.")
-    anomaly_detected: bool = Field(description="True if game anomalies or cheats detected.")
+    anomaly_detected: bool = Field(description="True if game anomalies detected.")
     confidence_score: float = Field(default=0.0, description="AI confidence score.")
     status_message: str = Field(description="Evaluation notes.")
 
@@ -293,7 +293,7 @@ class StakeDepositReq(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Futuristic Esports Gateway Interface with Live Payment Modals."""
+    """Futuristic Esports Gateway Interface with Cyber Shield Logo & Payment Modals."""
     return """
     <!DOCTYPE html>
     <html lang="en">
@@ -307,8 +307,8 @@ async def root():
                 --neon-pink: #ff007f;
                 --neon-green: #00ff66;
                 --dark-bg: #06090e;
-                --card-bg: rgba(14, 20, 31, 0.9);
-                --border-color: rgba(0, 243, 255, 0.3);
+                --card-bg: rgba(14, 20, 31, 0.92);
+                --border-color: rgba(0, 243, 255, 0.35);
             }
             
             * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -335,18 +335,18 @@ async def root():
                 position: relative; z-index: 1; max-width: 480px; width: 100%;
                 background: var(--card-bg); border: 1px solid var(--border-color);
                 border-radius: 20px; padding: 35px 25px; text-align: center;
-                box-shadow: 0 0 40px rgba(0, 243, 255, 0.15);
+                box-shadow: 0 0 45px rgba(0, 243, 255, 0.18);
                 backdrop-filter: blur(12px);
             }
 
-            /* Static World Map Logo */
+            /* Custom Geometric Cyber Shield Logo */
             .logo-container {
                 margin: 0 auto 15px;
-                width: 90px; height: 90px;
+                width: 85px; height: 85px;
             }
-            .world-map-icon {
+            .cyber-logo {
                 width: 100%; height: 100%;
-                filter: drop-shadow(0 0 10px var(--neon-cyan));
+                filter: drop-shadow(0 0 12px var(--neon-cyan));
             }
 
             h1 {
@@ -411,15 +411,22 @@ async def root():
     </head>
     <body>
         <div class="container">
-            <!-- High-Tech Static World Map SVG -->
+            <!-- Geometric Cyber Shield Emblem SVG -->
             <div class="logo-container">
-                <svg class="world-map-icon" viewBox="0 0 100 60" fill="none" stroke="var(--neon-cyan)" stroke-width="1.2">
-                    <path d="M12 18c2-3 5-4 8-2 3 2 5 8 8 7 3-1 6-7 10-6 4 1 6 6 9 5 3-1 6-5 9-4 3 1 5 6 8 6 3 0 5-4 8-3 3 1 5 5 8 4M15 32c3-1 6 3 9 3 3 0 5-4 8-3 3 1 4 6 7 6 3 0 5-4 8-3 3 1 5 4 8 4M25 45c2-2 5-1 7 1 2 2 4 4 7 3 3-1 5-4 8-3 3 1 4 4 7 3" opacity="0.85"/>
-                    <circle cx="28" cy="22" r="2" fill="var(--neon-green)"/>
-                    <circle cx="52" cy="18" r="2" fill="var(--neon-cyan)"/>
-                    <circle cx="78" cy="28" r="2" fill="var(--neon-pink)"/>
-                    <line x1="28" y1="22" x2="52" y2="18" stroke="var(--neon-cyan)" stroke-dasharray="2 2" opacity="0.6"/>
-                    <line x1="52" y1="18" x2="78" y2="28" stroke="var(--neon-cyan)" stroke-dasharray="2 2" opacity="0.6"/>
+                <svg class="cyber-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="cyberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#00f3ff"/>
+                            <stop offset="100%" stop-color="#7928ca"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Outer Hexagon Frame -->
+                    <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" stroke="url(#cyberGrad)" stroke-width="2.5" fill="rgba(0, 243, 255, 0.04)" />
+                    <!-- Inner Tech Crest / Wing Wings -->
+                    <path d="M50 20 L75 70 L62 70 L50 42 L38 70 L25 70 Z" fill="url(#cyberGrad)" opacity="0.95"/>
+                    <path d="M50 32 L60 58 L40 58 Z" fill="#06090e" />
+                    <!-- Core Gem -->
+                    <polygon points="50,15 55,26 45,26" fill="#ff007f" />
                 </svg>
             </div>
 
@@ -593,7 +600,7 @@ async def root():
 async def health_check():
     return {
         "status": "HEALTHY",
-        "engine": "AETHERIS v4.6.0",
+        "engine": "AETHERIS v4.7.0",
         "gemini_vision": gemini_client is not None
     }
 
