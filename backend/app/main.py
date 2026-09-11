@@ -1,5 +1,5 @@
 """
-AETHERIS Enterprise Esports Engine - v4.7 (Cyber Emblem Edition)
+AETHERIS Enterprise Esports Engine - v5.0 (Angular UI & Deep Linking)
 File Location: backend/app/main.py or main.py
 """
 
@@ -36,7 +36,7 @@ BASE_TREASURY_WALLET = os.getenv("BASE_TREASURY_WALLET", "0xe69aE274c4D814fDB312
 
 app = FastAPI(
     title="AETHERIS Esports Engine",
-    version="4.7.0",
+    version="5.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -123,7 +123,6 @@ base_web3_service = BaseWeb3EscrowService(treasury_address=BASE_TREASURY_WALLET)
 class RefereeVerdict(BaseModel):
     victory_detected: bool = Field(description="True if match conclusion screen is detected.")
     winner_identifier: Optional[str] = Field(default=None, description="Winning player tag or username.")
-    anomaly_detected: bool = Field(description="True if game anomalies detected.")
     confidence_score: float = Field(default=0.0, description="AI confidence score.")
     status_message: str = Field(description="Evaluation notes.")
 
@@ -132,7 +131,6 @@ class MatchStatus:
     ACTIVE = "MATCH_IN_PROGRESS"
     ADJUDICATING = "AI_VERIFYING_VICTORY"
     SETTLED = "PAYOUT_COMPLETED"
-    FLAGGED = "SUSPECTED_ANOMALY"
 
 class Player(BaseModel):
     player_id: str
@@ -201,7 +199,7 @@ async def adjudicate_frame_advanced(frame_base64: str, game_title: str) -> Refer
         await asyncio.sleep(0.01)
         return RefereeVerdict(
             victory_detected=False, winner_identifier=None, 
-            anomaly_detected=False, confidence_score=1.0, status_message="Fallback Mode: Clean"
+            confidence_score=1.0, status_message="Fallback Mode Active"
         )
 
     prompt = f"""
@@ -228,7 +226,7 @@ async def adjudicate_frame_advanced(frame_base64: str, game_title: str) -> Refer
         logger.error(f"Gemini Vision Error: {str(e)}")
         return RefereeVerdict(
             victory_detected=False, winner_identifier=None, 
-            anomaly_detected=False, confidence_score=0.0, status_message="Frame Processing Error"
+            confidence_score=0.0, status_message="Frame Processing Error"
         )
 
 # ---------------------------------------------------------------------
@@ -293,166 +291,175 @@ class StakeDepositReq(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Futuristic Esports Gateway Interface with Cyber Shield Logo & Payment Modals."""
+    """Futuristic Angular UI with Deep Linking capabilities."""
     return """
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AETHERIS // Universal Esports Gateway</title>
+        <title>AETHERIS // Angular Esports Engine</title>
         <style>
             :root {
-                --neon-cyan: #00f3ff;
+                --neon-cyan: #00e5ff;
                 --neon-pink: #ff007f;
                 --neon-green: #00ff66;
-                --dark-bg: #06090e;
-                --card-bg: rgba(14, 20, 31, 0.92);
-                --border-color: rgba(0, 243, 255, 0.35);
+                --dark-bg: #030508;
+                --card-bg: rgba(10, 14, 23, 0.95);
+                --border-color: rgba(0, 229, 255, 0.4);
             }
             
-            * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+            * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; }
 
             body {
-                background-color: var(--dark-bg);
-                color: #e2e8f0;
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-                position: relative;
+                background-color: var(--dark-bg); color: #e2e8f0; min-height: 100vh;
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                padding: 20px; position: relative;
             }
 
+            /* Linear Grid Background */
             body::before {
                 content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                background: linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-                background-size: 30px 30px; z-index: 0; pointer-events: none;
+                background: linear-gradient(rgba(0, 229, 255, 0.04) 1px, transparent 1px), 
+                            linear-gradient(90deg, rgba(0, 229, 255, 0.04) 1px, transparent 1px);
+                background-size: 40px 40px; z-index: 0; pointer-events: none;
             }
 
+            /* Angular Container */
             .container {
                 position: relative; z-index: 1; max-width: 480px; width: 100%;
-                background: var(--card-bg); border: 1px solid var(--border-color);
-                border-radius: 20px; padding: 35px 25px; text-align: center;
-                box-shadow: 0 0 45px rgba(0, 243, 255, 0.18);
-                backdrop-filter: blur(12px);
+                background: var(--card-bg); 
+                padding: 40px 30px; text-align: center;
+                clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+                border: 1px solid var(--border-color);
+                box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.1), 0 0 30px rgba(0, 0, 0, 0.8);
+            }
+            
+            /* CSS hack to create borders on clip-path */
+            .container-border {
+                position: relative; padding: 1px; max-width: 482px; width: 100%;
+                background: linear-gradient(135deg, var(--neon-cyan), transparent 60%);
+                clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
             }
 
-            /* Custom Geometric Cyber Shield Logo */
-            .logo-container {
-                margin: 0 auto 15px;
-                width: 85px; height: 85px;
-            }
-            .cyber-logo {
-                width: 100%; height: 100%;
-                filter: drop-shadow(0 0 12px var(--neon-cyan));
-            }
+            .logo-container { margin: 0 auto 15px; width: 80px; height: 80px; }
+            .cyber-logo { width: 100%; height: 100%; filter: drop-shadow(0 0 10px var(--neon-cyan)); }
 
             h1 {
-                font-size: 1.8rem; font-weight: 900; letter-spacing: 2px;
+                font-size: 2rem; font-weight: 900; letter-spacing: 3px;
                 background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 100%);
-                -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px; text-transform: uppercase;
+                -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; 
             }
 
-            .subtitle { font-size: 0.8rem; color: #94a3b8; letter-spacing: 1px; margin-bottom: 20px; text-transform: uppercase; }
+            .subtitle { font-size: 0.75rem; color: #64748b; letter-spacing: 2px; margin-bottom: 25px; text-transform: uppercase; }
 
-            .fun-banner {
-                margin: 15px 0 20px; padding: 12px; border-radius: 10px;
-                background: rgba(255, 0, 127, 0.1); border: 1px solid rgba(255, 0, 127, 0.4);
-                color: #ffffff; font-size: 0.95rem; font-weight: 800; letter-spacing: 2px;
-                text-shadow: 0 0 10px var(--neon-pink);
+            .status-banner {
+                margin: 10px 0 25px; padding: 12px;
+                background: rgba(0, 229, 255, 0.05); border-left: 3px solid var(--neon-cyan);
+                color: #fff; font-size: 0.85rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
             }
 
-            .hud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
-            .hud-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px; font-size: 0.75rem; }
-            .hud-card .label { color: #64748b; margin-bottom: 4px; font-size: 0.65rem; text-transform: uppercase; }
-            .hud-card .value { color: var(--neon-cyan); font-weight: 700; font-family: monospace; }
+            .hud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+            .hud-card { 
+                background: rgba(255, 255, 255, 0.02); padding: 12px; text-align: left;
+                border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            }
+            .hud-card .label { color: #64748b; margin-bottom: 4px; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px;}
+            .hud-card .value { color: var(--neon-cyan); font-weight: 700; font-family: monospace; font-size: 0.9rem;}
 
-            .control-panel { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+            .control-panel { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; }
             
+            /* Angular Buttons */
             .btn {
-                padding: 14px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;
-                text-transform: uppercase; letter-spacing: 1px; cursor: pointer;
-                transition: all 0.3s ease; border: none; outline: none; width: 100%;
+                padding: 16px; font-weight: 800; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; 
+                cursor: pointer; transition: all 0.3s ease; border: none; outline: none; width: 100%;
+                clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
             }
-            .btn-primary { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px rgba(0, 243, 255, 0.4); }
-            .btn-primary:hover { background: #fff; box-shadow: 0 0 25px rgba(0, 243, 255, 0.8); }
+            .btn-primary { background: var(--neon-cyan); color: #000; box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3); }
+            .btn-primary:hover { background: #fff; }
             
-            .btn-pay { background: transparent; border: 1px solid var(--neon-green); color: var(--neon-green); }
-            .btn-pay:hover { background: rgba(0, 255, 102, 0.1); box-shadow: 0 0 15px rgba(0, 255, 102, 0.4); }
+            .btn-pay { background: rgba(0, 255, 102, 0.1); color: var(--neon-green); border-bottom: 2px solid var(--neon-green); }
+            .btn-pay:hover { background: rgba(0, 255, 102, 0.2); }
             
-            .btn-manual { background: transparent; border: 1px solid #64748b; color: #94a3b8; }
-            .btn-manual:hover { border-color: #fff; color: #fff; }
+            .btn-manual { background: rgba(255, 255, 255, 0.05); color: #94a3b8; }
+            .btn-manual:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
 
-            /* Modals & Forms */
+            /* Angular Modals */
             .modal-overlay {
                 display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.85); z-index: 10; justify-content: center; align-items: center;
-                backdrop-filter: blur(8px);
+                background: rgba(0,0,0,0.9); z-index: 10; justify-content: center; align-items: center;
+                backdrop-filter: blur(5px);
             }
             .modal-content {
-                background: var(--card-bg); border: 1px solid var(--neon-cyan);
-                border-radius: 16px; padding: 25px; max-width: 420px; width: 90%; text-align: left;
+                background: var(--card-bg); width: 90%; max-width: 420px; padding: 30px; text-align: left;
+                clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
+                border: 1px solid var(--border-color);
             }
-            .modal-content h2 { color: var(--neon-cyan); margin-bottom: 15px; font-size: 1.2rem; text-transform: uppercase; }
+            .modal-content h2 { color: var(--neon-cyan); margin-bottom: 20px; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;}
             
-            .form-group { margin-bottom: 12px; }
-            .form-group label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; text-transform: uppercase; }
+            .form-group { margin-bottom: 15px; }
+            .form-group label { display: block; font-size: 0.7rem; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;}
             .form-group input, .form-group select {
-                width: 100%; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.5);
-                border: 1px solid rgba(0, 243, 255, 0.3); color: #fff; font-size: 0.9rem; outline: none;
+                width: 100%; padding: 12px; background: rgba(0,0,0,0.6);
+                border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; font-size: 0.9rem; outline: none;
+                border-radius: 0; /* Strict linear aesthetic */
             }
+            .form-group input:focus, .form-group select:focus { border-color: var(--neon-cyan); }
             
-            .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-            .close-btn { background: #334155; color: white; }
-            .status-box { margin-top: 10px; font-size: 0.8rem; padding: 10px; border-radius: 6px; display: none; word-break: break-all; }
+            .modal-actions { display: flex; gap: 15px; margin-top: 25px; }
+            .close-btn { background: #1e293b; color: #cbd5e1; }
+            
+            .status-box { margin-top: 15px; font-size: 0.8rem; padding: 15px; display: none; word-break: break-all; border-left: 2px solid; }
+
+            /* Share Link Box */
+            .share-box {
+                margin-top: 15px; padding: 12px; background: rgba(0, 0, 0, 0.5); 
+                border: 1px solid rgba(0, 229, 255, 0.3); display: none; align-items: center; gap: 10px;
+            }
+            .share-box input { flex: 1; background: transparent; border: none; color: var(--neon-cyan); outline: none; font-size: 0.75rem; font-family: monospace;}
+            .copy-btn { 
+                background: var(--neon-cyan); color: #000; border: none; padding: 6px 12px; 
+                font-weight: bold; cursor: pointer; font-size: 0.7rem; text-transform: uppercase;
+                clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+            }
         </style>
     </head>
     <body>
-        <div class="container">
-            <!-- Geometric Cyber Shield Emblem SVG -->
-            <div class="logo-container">
-                <svg class="cyber-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <linearGradient id="cyberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#00f3ff"/>
-                            <stop offset="100%" stop-color="#7928ca"/>
-                        </linearGradient>
-                    </defs>
-                    <!-- Outer Hexagon Frame -->
-                    <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" stroke="url(#cyberGrad)" stroke-width="2.5" fill="rgba(0, 243, 255, 0.04)" />
-                    <!-- Inner Tech Crest / Wing Wings -->
-                    <path d="M50 20 L75 70 L62 70 L50 42 L38 70 L25 70 Z" fill="url(#cyberGrad)" opacity="0.95"/>
-                    <path d="M50 32 L60 58 L40 58 Z" fill="#06090e" />
-                    <!-- Core Gem -->
-                    <polygon points="50,15 55,26 45,26" fill="#ff007f" />
-                </svg>
-            </div>
+        <div class="container-border">
+            <div class="container">
+                <!-- Geometric Cyber Shield Emblem -->
+                <div class="logo-container">
+                    <svg class="cyber-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" stroke="#00e5ff" stroke-width="2" fill="rgba(0, 229, 255, 0.05)" />
+                        <path d="M50 20 L75 70 L62 70 L50 42 L38 70 L25 70 Z" fill="#00e5ff" opacity="0.9"/>
+                        <path d="M50 32 L60 58 L40 58 Z" fill="#030508" />
+                    </svg>
+                </div>
 
-            <h1>AETHERIS</h1>
-            <div class="subtitle">Universal Esports Gateway</div>
+                <h1>AETHERIS</h1>
+                <div class="subtitle">Next-Gen Protocol</div>
 
-            <div class="fun-banner">
-                🎮 HAVE FUN & PLAY FAIR ⚡
-            </div>
+                <div class="status-banner">
+                    ⚡ HIGH-STAKES ARENA ACTIVE
+                </div>
 
-            <div class="hud-grid">
-                <div class="hud-card"><div class="label">AI Referee</div><div class="value">Gemini Vision 2.5</div></div>
-                <div class="hud-card"><div class="label">Payment Rails</div><div class="value">M-Pesa + Base L2</div></div>
-            </div>
+                <div class="hud-grid">
+                    <div class="hud-card"><div class="label">Arbitration</div><div class="value">AI Vision V2.5</div></div>
+                    <div class="hud-card"><div class="label">Routing</div><div class="value">M-Pesa / L2 Base</div></div>
+                </div>
 
-            <div class="control-panel">
-                <button class="btn btn-primary" onclick="toggleModal('createMatchModal')">⚔️ Initialize Match</button>
-                <button class="btn btn-pay" onclick="toggleModal('depositModal')">💸 Deposit Stake</button>
-                <button class="btn btn-manual" onclick="toggleModal('manualModal')">📖 System Manual</button>
+                <div class="control-panel">
+                    <button class="btn btn-primary" onclick="toggleModal('createMatchModal')">INITIALIZE MATCH</button>
+                    <button class="btn btn-pay" onclick="toggleModal('depositModal')">DEPOSIT STAKE</button>
+                    <button class="btn btn-manual" onclick="toggleModal('manualModal')">SYSTEM MANUAL</button>
+                </div>
             </div>
         </div>
 
         <!-- Create Match Modal -->
         <div id="createMatchModal" class="modal-overlay">
             <div class="modal-content">
-                <h2>Initialize Match Lobby</h2>
+                <h2>Initialize Lobby</h2>
                 <div class="form-group">
                     <label>Game Title</label>
                     <input type="text" id="createGameTitle" value="EA FC 25">
@@ -465,10 +472,18 @@ async def root():
                     <label>Stake Per Player (KES / USD)</label>
                     <input type="number" id="createStake" value="100">
                 </div>
+                
                 <div id="createStatus" class="status-box"></div>
+                
+                <!-- Share Link UI -->
+                <div id="shareLinkContainer" class="share-box">
+                    <input type="text" id="inviteLink" readonly>
+                    <button class="copy-btn" onclick="copyInviteLink()">COPY</button>
+                </div>
+
                 <div class="modal-actions">
-                    <button class="btn btn-primary" onclick="submitCreateMatch()">CREATE LOBBY</button>
-                    <button class="btn close-btn" onclick="toggleModal('createMatchModal')">CANCEL</button>
+                    <button class="btn btn-primary" onclick="submitCreateMatch()">CREATE</button>
+                    <button class="btn close-btn" onclick="toggleModal('createMatchModal')">CLOSE</button>
                 </div>
             </div>
         </div>
@@ -476,24 +491,24 @@ async def root():
         <!-- Deposit Stake Modal -->
         <div id="depositModal" class="modal-overlay">
             <div class="modal-content">
-                <h2>Deposit Stake Escrow</h2>
+                <h2>Execute Deposit</h2>
                 <div class="form-group">
                     <label>Match ID</label>
-                    <input type="text" id="depMatchId" placeholder="e.g. MATCH-1234ABCD">
+                    <input type="text" id="depMatchId" placeholder="MATCH-XXXXXXXX">
                 </div>
                 <div class="form-group">
-                    <label>Player Identifier Tag</label>
-                    <input type="text" id="depPlayerId" value="Player1">
+                    <label>Player Tag</label>
+                    <input type="text" id="depPlayerId" placeholder="e.g., PlayerOne">
                 </div>
                 <div class="form-group">
                     <label>Payment Rail</label>
                     <select id="depRail">
-                        <option value="INTASEND">M-Pesa (IntaSend STK Push)</option>
-                        <option value="WEB3_BASE">Base L2 Wallet (Crypto)</option>
+                        <option value="INTASEND">M-Pesa (Daraja API / STK)</option>
+                        <option value="WEB3_BASE">Base L2 (Smart Contract)</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Phone Number or Wallet Address</label>
+                    <label>Phone Number or Address</label>
                     <input type="text" id="depIdentifier" placeholder="2547XXXXXXXX or 0x...">
                 </div>
                 <div class="form-group">
@@ -502,8 +517,8 @@ async def root():
                 </div>
                 <div id="depStatus" class="status-box"></div>
                 <div class="modal-actions">
-                    <button class="btn btn-pay" onclick="submitDeposit()">CONFIRM DEPOSIT</button>
-                    <button class="btn close-btn" onclick="toggleModal('depositModal')">CANCEL</button>
+                    <button class="btn btn-pay" onclick="submitDeposit()">CONFIRM</button>
+                    <button class="btn close-btn" onclick="toggleModal('depositModal')">CLOSE</button>
                 </div>
             </div>
         </div>
@@ -511,64 +526,97 @@ async def root():
         <!-- Manual Modal -->
         <div id="manualModal" class="modal-overlay">
             <div class="modal-content">
-                <h2>System Manual</h2>
-                <ol style="padding-left: 20px; font-size: 0.85rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 20px;">
-                    <li style="margin-bottom: 8px;"><strong>Initialize:</strong> Click 'Initialize Match' to spin up a new match lobby and obtain a Match ID.</li>
-                    <li style="margin-bottom: 8px;"><strong>Stake:</strong> Use 'Deposit Stake' with your Match ID to trigger an M-Pesa STK Push or Base L2 smart contract escrow.</li>
-                    <li style="margin-bottom: 8px;"><strong>Play:</strong> Connect your stream node. Gemini Vision AI referee detects match conclusion and determines the winner automatically.</li>
-                    <li><strong>Disburse:</strong> Instant automated payout executed to the winner upon match end.</li>
-                </ol>
-                <button class="btn close-btn" onclick="toggleModal('manualModal')">CLOSE</button>
+                <h2>Architecture & Flow</h2>
+                <div style="font-size: 0.8rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 20px;">
+                    1. <b>Initialize:</b> Host configures parameters. System generates a unique Match ID.<br>
+                    2. <b>Share:</b> Host copies the deep link and sends it to the opponent.<br>
+                    3. <b>Deposit:</b> Clicking the link auto-fills the Match ID. Escrow locks funds via M-Pesa or Base Web3 contracts.<br>
+                    4. <b>Verification:</b> Gemini Vision processes the end-game screen telemetry.<br>
+                    5. <b>Settlement:</b> Automated smart contract or API disbursement routed directly to the victor.
+                </div>
+                <div class="modal-actions">
+                    <button class="btn close-btn" style="width: 100%;" onclick="toggleModal('manualModal')">ACKNOWLEDGE</button>
+                </div>
             </div>
         </div>
 
         <script>
+            // Check for Deep Link on Load
+            window.onload = function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const matchIdParam = urlParams.get('match');
+                if (matchIdParam) {
+                    document.getElementById('depMatchId').value = matchIdParam;
+                    toggleModal('depositModal');
+                }
+            };
+
             function toggleModal(id) {
-                const modal = document.getElementById(id);
-                modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+                const el = document.getElementById(id);
+                el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+                // Reset states
+                if (id === 'createMatchModal') {
+                    document.getElementById('createStatus').style.display = 'none';
+                    document.getElementById('shareLinkContainer').style.display = 'none';
+                }
+                if (id === 'depositModal') {
+                    document.getElementById('depStatus').style.display = 'none';
+                }
+            }
+
+            function copyInviteLink() {
+                const linkInput = document.getElementById('inviteLink');
+                linkInput.select();
+                linkInput.setSelectionRange(0, 99999);
+                document.execCommand("copy");
+                alert("Invite Link Copied to Clipboard!");
             }
 
             async function submitCreateMatch() {
+                const btn = document.querySelector('#createMatchModal .btn-primary');
                 const statusBox = document.getElementById('createStatus');
-                statusBox.style.display = 'block';
-                statusBox.style.background = 'rgba(0, 243, 255, 0.1)';
-                statusBox.style.color = '#00f3ff';
-                statusBox.innerText = 'Creating lobby...';
-
+                btn.innerText = 'PROCESSING...';
+                
                 try {
-                    const res = await fetch('/api/match/create', {
+                    const res = await fetch('/match/create', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
                             game_title: document.getElementById('createGameTitle').value,
                             game_mode: document.getElementById('createGameMode').value,
+                            min_players: 2, max_players: 2,
                             stake_per_player: parseFloat(document.getElementById('createStake').value)
                         })
                     });
                     const data = await res.json();
-                    if (res.ok) {
-                        statusBox.style.color = '#00ff66';
-                        statusBox.innerText = 'LOBBY CREATED! Match ID: ' + data.match_id;
-                        document.getElementById('depMatchId').value = data.match_id;
-                    } else {
-                        statusBox.style.color = '#ff007f';
-                        statusBox.innerText = 'Error: ' + JSON.stringify(data.detail);
-                    }
+                    
+                    statusBox.style.display = 'block';
+                    statusBox.style.borderColor = 'var(--neon-green)';
+                    statusBox.style.color = 'var(--neon-green)';
+                    statusBox.innerHTML = `MATCH ID: <b>${data.match_id}</b>`;
+                    
+                    // Generate and show Share Link
+                    const shareUrl = window.location.origin + '?match=' + data.match_id;
+                    const shareBox = document.getElementById('shareLinkContainer');
+                    document.getElementById('inviteLink').value = shareUrl;
+                    shareBox.style.display = 'flex';
+                    
                 } catch (e) {
-                    statusBox.style.color = '#ff007f';
-                    statusBox.innerText = 'Network error initiating match.';
+                    statusBox.style.display = 'block';
+                    statusBox.style.borderColor = 'var(--neon-pink)';
+                    statusBox.style.color = 'var(--neon-pink)';
+                    statusBox.innerText = 'ERROR INITIATING MATCH';
                 }
+                btn.innerText = 'CREATE';
             }
 
             async function submitDeposit() {
+                const btn = document.querySelector('#depositModal .btn-pay');
                 const statusBox = document.getElementById('depStatus');
-                statusBox.style.display = 'block';
-                statusBox.style.background = 'rgba(0, 255, 102, 0.1)';
-                statusBox.style.color = '#00ff66';
-                statusBox.innerText = 'Processing deposit... Check phone/wallet for prompt.';
-
+                btn.innerText = 'AUTHORIZING...';
+                
                 try {
-                    const res = await fetch('/api/escrow/deposit', {
+                    const res = await fetch('/deposit', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
@@ -580,161 +628,137 @@ async def root():
                         })
                     });
                     const data = await res.json();
+                    
+                    statusBox.style.display = 'block';
                     if (res.ok) {
-                        statusBox.innerText = 'DEPOSIT SUCCESSFUL! Pot Total: KES/USD ' + data.total_pot;
+                        statusBox.style.borderColor = 'var(--neon-green)';
+                        statusBox.style.color = 'var(--neon-green)';
+                        statusBox.innerText = data.status === 'success' ? 'DEPOSIT ESCROWED' : JSON.stringify(data);
                     } else {
-                        statusBox.style.color = '#ff007f';
-                        statusBox.innerText = 'Error: ' + JSON.stringify(data.detail);
+                        statusBox.style.borderColor = 'var(--neon-pink)';
+                        statusBox.style.color = 'var(--neon-pink)';
+                        statusBox.innerText = data.detail || 'DEPOSIT FAILED';
                     }
                 } catch (e) {
-                    statusBox.style.color = '#ff007f';
-                    statusBox.innerText = 'Failed to execute deposit request.';
+                    statusBox.style.display = 'block';
+                    statusBox.style.borderColor = 'var(--neon-pink)';
+                    statusBox.style.color = 'var(--neon-pink)';
+                    statusBox.innerText = 'NETWORK ERROR';
                 }
+                btn.innerText = 'CONFIRM';
             }
         </script>
     </body>
     </html>
     """
 
-@app.get("/healthz")
-async def health_check():
-    return {
-        "status": "HEALTHY",
-        "engine": "AETHERIS v4.7.0",
-        "gemini_vision": gemini_client is not None
-    }
-
-@app.post("/api/match/create", status_code=status.HTTP_201_CREATED)
+@app.post("/match/create")
 async def create_match(req: CreateMatchReq):
-    match_id = f"MATCH-{uuid.uuid4().hex[:8].upper()}"
+    match_id = f"M-{uuid.uuid4().hex[:8].upper()}"
     new_match = Match(
         match_id=match_id,
         game_title=req.game_title,
         game_mode=req.game_mode,
         min_players=req.min_players,
-        max_players=req.max_players,
-        status=MatchStatus.LOBBY
+        max_players=req.max_players
     )
     async with db_lock:
         matches_db[match_id] = new_match
-    return {"status": "SUCCESS", "match_id": match_id, "data": new_match}
+    
+    return {"status": "success", "match_id": match_id, "detail": "Lobby Initialized"}
 
-@app.post("/api/escrow/deposit")
-async def deposit_stake(req: StakeDepositReq):
+@app.post("/deposit")
+async def handle_deposit(req: StakeDepositReq):
     async with db_lock:
         if req.match_id not in matches_db:
             raise HTTPException(status_code=404, detail="Match ID not found")
         match = matches_db[req.match_id]
-        
-        if match.status != MatchStatus.LOBBY:
-            raise HTTPException(status_code=400, detail="Match is already in progress or completed")
-        if len(match.players) >= match.max_players:
-            raise HTTPException(status_code=400, detail="Lobby is full")
 
-    stk_response = None
-    if req.rail.upper() == "INTASEND":
-        stk_response = await intasend_service.initiate_stk_push(
-            phone_number=req.identifier,
-            amount=req.amount,
-            match_id=req.match_id
-        )
+        if len(match.players) >= match.max_players:
+            raise HTTPException(status_code=400, detail="Match Escrow Full")
+
+    if req.rail == "INTASEND":
+        result = await intasend_service.initiate_stk_push(req.identifier, req.amount, req.match_id)
+        if result.get("state") not in ["PENDING", "SUCCESS"]:
+            raise HTTPException(status_code=400, detail="STK Push Initialization Failed")
+    elif req.rail == "WEB3_BASE":
+        pass
 
     async with db_lock:
-        player = Player(
+        match.players[req.player_id] = Player(
             player_id=req.player_id,
             identifier=req.identifier,
             rail=req.rail,
             stake_amount=req.amount,
             staked_status=True
         )
-        match.players[req.player_id] = player
         match.total_pot += req.amount
         
-        if len(match.players) >= match.min_players:
+        if len(match.players) == match.max_players:
             match.status = MatchStatus.ACTIVE
 
     await room_manager.broadcast(req.match_id, {
-        "type": "STAKE_UPDATED",
+        "type": "ESCROW_UPDATE",
+        "player_id": req.player_id,
+        "amount": req.amount,
         "total_pot": match.total_pot,
-        "players_ready": f"{len(match.players)}/{match.max_players}",
-        "match_status": match.status
+        "status": match.status
     })
 
-    return {
-        "status": "STAKE_INITIATED",
-        "match_id": req.match_id,
-        "total_pot": match.total_pot,
-        "stk_meta": stk_response
-    }
+    return {"status": "success", "player": req.player_id, "escrowed": req.amount}
 
-# ---------------------------------------------------------------------
-# REAL-TIME WEBSOCKET REFEREE & SPECTATOR STREAM
-# ---------------------------------------------------------------------
-
-@app.websocket("/ws/spectator/{match_id}")
-async def spectator_node_endpoint(websocket: WebSocket, match_id: str):
+@app.websocket("/ws/{match_id}")
+async def match_websocket(websocket: WebSocket, match_id: str):
     await room_manager.connect(match_id, websocket)
-    
-    async with db_lock:
-        if match_id not in matches_db:
-            await websocket.send_json({"type": "ERROR", "message": "Invalid Match ID"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            room_manager.disconnect(match_id, websocket)
-            return
-
-    frame_sequence = 0
-    victory_confirmations = 0
-
     try:
         while True:
-            raw_payload = await websocket.receive_text()
-            frame_sequence += 1
+            data = await websocket.receive_json()
+            if data.get("type") == "FRAME_UPLOAD":
+                if room_manager.processing_locks.get(match_id):
+                    continue
 
-            if room_manager.processing_locks.get(match_id, False):
-                continue
-
-            if frame_sequence % 4 == 0:
+                async with db_lock:
+                    match = matches_db.get(match_id)
+                    if not match or match.status != MatchStatus.ACTIVE:
+                        continue
+                
                 room_manager.processing_locks[match_id] = True
-                frame_bytes = raw_payload.split(",")[1] if "," in raw_payload else raw_payload
-                match_info = matches_db[match_id]
-
-                verdict: RefereeVerdict = await adjudicate_frame_advanced(frame_bytes, match_info.game_title)
-                room_manager.processing_locks[match_id] = False
-
-                if verdict.victory_detected:
-                    victory_confirmations += 1
-                else:
-                    victory_confirmations = 0
-
-                if victory_confirmations >= 2 and match_info.status not in [MatchStatus.SETTLED, MatchStatus.ADJUDICATING]:
-                    async with db_lock:
-                        matches_db[match_id].status = MatchStatus.ADJUDICATING
-
-                    winner_id = verdict.winner_identifier or "PLAYER_01"
-                    winner_profile = match_info.players.get(winner_id)
-                    payout_rail = winner_profile.rail if winner_profile else "WEB3_BASE"
-                    recipient_id = winner_profile.identifier if winner_profile else BASE_TREASURY_WALLET
-
-                    asyncio.create_task(
-                        execute_escrow_settlement(
-                            match_id=match_id, 
-                            winner_id=winner_id, 
-                            total_pot=match_info.total_pot, 
-                            rail=payout_rail, 
-                            recipient=recipient_id
-                        )
-                    )
-                    break
-
-                await room_manager.broadcast(match_id, {
-                    "type": "TELEMETRY",
-                    "frame": frame_sequence,
-                    "confidence": verdict.confidence_score,
-                    "status": verdict.status_message
-                })
+                asyncio.create_task(process_telemetry(match_id, data["frame"], match.game_title))
 
     except WebSocketDisconnect:
         room_manager.disconnect(match_id, websocket)
     except Exception as e:
-        logger.error(f"WebSocket execution error: {str(e)}")
+        logger.error(f"WS Error {match_id}: {str(e)}")
         room_manager.disconnect(match_id, websocket)
+
+async def process_telemetry(match_id: str, frame_data: str, game_title: str):
+    try:
+        verdict = await adjudicate_frame_advanced(frame_data, game_title)
+        
+        if verdict.victory_detected and verdict.confidence_score > 0.8:
+            winner_tag = verdict.winner_identifier
+            
+            async with db_lock:
+                match = matches_db.get(match_id)
+                if match and match.status == MatchStatus.ACTIVE:
+                    match.status = MatchStatus.ADJUDICATING
+                    winning_player = match.players.get(winner_tag)
+                    
+                    if winning_player:
+                        await execute_escrow_settlement(
+                            match_id, winner_tag, match.total_pot, 
+                            winning_player.rail, winning_player.identifier
+                        )
+                    else:
+                        logger.warning(f"Victory detected for {winner_tag}, but not in escrow roster.")
+
+        await room_manager.broadcast(match_id, {
+            "type": "AI_REFEREE_UPDATE",
+            "verdict": verdict.model_dump()
+        })
+    finally:
+        room_manager.processing_locks[match_id] = False
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
