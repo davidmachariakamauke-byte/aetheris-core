@@ -283,7 +283,7 @@ async def execute_escrow_settlement(match_id: str, winner_id: str, total_pot: fl
         logger.error(f"Settlement failed for match {match_id}: {str(e)}")
 
 # ---------------------------------------------------------------------
-# REST ENDPOINTS
+# REST ENDPOINTS & HTML UI
 # ---------------------------------------------------------------------
 
 class CreateMatchReq(BaseModel):
@@ -302,7 +302,7 @@ class StakeDepositReq(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Futuristic Cyberpunk Esports Gateway Interface."""
+    """Futuristic Cyberpunk Esports Gateway Interface with Controls."""
     return """
     <!DOCTYPE html>
     <html lang="en">
@@ -316,16 +316,11 @@ async def root():
                 --neon-pink: #ff007f;
                 --neon-green: #00ff66;
                 --dark-bg: #06090e;
-                --card-bg: rgba(14, 20, 31, 0.75);
+                --card-bg: rgba(14, 20, 31, 0.85);
                 --border-color: rgba(0, 243, 255, 0.25);
             }
             
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            }
+            * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
             body {
                 background-color: var(--dark-bg);
@@ -336,205 +331,148 @@ async def root():
                 align-items: center;
                 justify-content: center;
                 padding: 20px;
-                overflow-x: hidden;
                 position: relative;
             }
 
-            /* Animated Background Grid & Scanline */
             body::before {
-                content: "";
-                position: absolute;
-                top: 0; left: 0; width: 100%; height: 100%;
-                background: 
-                    linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-                background-size: 30px 30px;
-                z-index: 0;
-                pointer-events: none;
+                content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                background: linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+                background-size: 30px 30px; z-index: 0; pointer-events: none;
             }
 
             .container {
-                position: relative;
-                z-index: 1;
-                max-width: 480px;
-                width: 100%;
-                background: var(--card-bg);
-                border: 1px solid var(--border-color);
-                border-radius: 20px;
-                padding: 35px 25px;
-                text-align: center;
+                position: relative; z-index: 1; max-width: 500px; width: 100%;
+                background: var(--card-bg); border: 1px solid var(--border-color);
+                border-radius: 20px; padding: 35px 25px; text-align: center;
                 box-shadow: 0 0 40px rgba(0, 243, 255, 0.15), inset 0 0 15px rgba(0, 243, 255, 0.05);
                 backdrop-filter: blur(12px);
             }
 
-            /* Animated Logo Graphic */
-            .logo-icon {
-                width: 80px;
-                height: 80px;
+            /* 3D Wireframe Globe Animation */
+            .logo-container {
+                perspective: 1000px;
                 margin: 0 auto 20px;
-                filter: drop-shadow(0 0 12px var(--neon-cyan));
-                animation: float 4s ease-in-out infinite;
+                width: 90px; height: 90px;
             }
-
-            @keyframes float {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-8px); }
+            .globe-icon {
+                width: 100%; height: 100%;
+                filter: drop-shadow(0 0 15px var(--neon-cyan));
+                animation: spinEarth 8s linear infinite;
+                transform-style: preserve-3d;
+            }
+            @keyframes spinEarth {
+                0% { transform: rotateY(0deg); }
+                100% { transform: rotateY(360deg); }
             }
 
             h1 {
-                font-size: 1.8rem;
-                font-weight: 900;
-                letter-spacing: 2px;
+                font-size: 1.8rem; font-weight: 900; letter-spacing: 2px;
                 background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                margin-bottom: 8px;
-                text-transform: uppercase;
+                -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; text-transform: uppercase;
             }
 
-            .subtitle {
-                font-size: 0.85rem;
-                color: #94a3b8;
-                letter-spacing: 1px;
-                margin-bottom: 25px;
-                text-transform: uppercase;
-            }
+            .subtitle { font-size: 0.85rem; color: #94a3b8; letter-spacing: 1px; margin-bottom: 20px; text-transform: uppercase; }
 
-            /* Neon Glowing HAVE FUN Banner */
             .fun-banner {
-                margin: 20px 0;
-                padding: 12px 18px;
-                border-radius: 12px;
-                background: rgba(255, 0, 127, 0.1);
-                border: 1px solid rgba(255, 0, 127, 0.4);
-                color: #ffffff;
-                font-size: 1rem;
-                font-weight: 800;
-                letter-spacing: 2.5px;
-                text-transform: uppercase;
-                text-shadow: 0 0 10px var(--neon-pink);
-                animation: neonPulse 2s infinite alternate;
+                margin: 15px 0; padding: 10px; border-radius: 8px;
+                background: rgba(255, 0, 127, 0.1); border: 1px solid rgba(255, 0, 127, 0.4);
+                color: #ffffff; font-size: 0.9rem; font-weight: 800; letter-spacing: 2px;
+                text-shadow: 0 0 10px var(--neon-pink); animation: neonPulse 2s infinite alternate;
             }
+            @keyframes neonPulse { 0% { box-shadow: 0 0 5px rgba(255, 0, 127, 0.2); } 100% { box-shadow: 0 0 15px rgba(255, 0, 127, 0.5); } }
 
-            @keyframes neonPulse {
-                0% { box-shadow: 0 0 5px rgba(255, 0, 127, 0.2); }
-                100% { box-shadow: 0 0 20px rgba(255, 0, 127, 0.6); }
-            }
+            .hud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+            .hud-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px; font-size: 0.75rem; }
+            .hud-card .label { color: #64748b; margin-bottom: 4px; font-size: 0.65rem; text-transform: uppercase; }
+            .hud-card .value { color: var(--neon-cyan); font-weight: 700; font-family: monospace; }
 
-            /* HUD Telemetry Node Grid */
-            .hud-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 12px;
-                margin-top: 25px;
+            /* Action Control Panel */
+            .control-panel {
+                display: flex; flex-direction: column; gap: 12px; margin-top: 25px;
+                padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);
             }
+            
+            .btn {
+                padding: 14px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;
+                text-transform: uppercase; letter-spacing: 1px; cursor: pointer;
+                transition: all 0.3s ease; border: none; outline: none;
+            }
+            .btn-primary { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px rgba(0, 243, 255, 0.4); }
+            .btn-primary:hover { background: #fff; box-shadow: 0 0 25px rgba(0, 243, 255, 0.8); }
+            
+            .btn-pay { background: transparent; border: 1px solid var(--neon-green); color: var(--neon-green); }
+            .btn-pay:hover { background: rgba(0, 255, 102, 0.1); box-shadow: 0 0 15px rgba(0, 255, 102, 0.4); }
+            
+            .btn-manual { background: transparent; border: 1px solid #64748b; color: #94a3b8; }
+            .btn-manual:hover { border-color: #fff; color: #fff; }
 
-            .hud-card {
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 12px;
-                padding: 12px;
-                font-size: 0.75rem;
+            /* Modal Styles */
+            .modal-overlay {
+                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8); z-index: 10; justify-content: center; align-items: center;
+                backdrop-filter: blur(5px);
             }
-
-            .hud-card .label {
-                color: #64748b;
-                margin-bottom: 4px;
-                font-size: 0.7rem;
-                text-transform: uppercase;
+            .modal-content {
+                background: var(--card-bg); border: 1px solid var(--neon-cyan);
+                border-radius: 12px; padding: 25px; max-width: 400px; width: 90%; text-align: left;
             }
-
-            .hud-card .value {
-                color: var(--neon-cyan);
-                font-weight: 700;
-                font-family: monospace;
-            }
-
-            .status-badge {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 6px 16px;
-                background: rgba(0, 255, 102, 0.1);
-                border: 1px solid rgba(0, 255, 102, 0.3);
-                border-radius: 30px;
-                color: var(--neon-green);
-                font-size: 0.8rem;
-                font-weight: 700;
-                margin-bottom: 15px;
-            }
-
-            .dot {
-                width: 8px;
-                height: 8px;
-                background-color: var(--neon-green);
-                border-radius: 50%;
-                box-shadow: 0 0 8px var(--neon-green);
-                animation: blink 1.5s infinite;
-            }
-
-            @keyframes blink {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.3; }
-            }
-
-            .anti-cheat-note {
-                font-size: 0.7rem;
-                color: #64748b;
-                margin-top: 20px;
-                line-height: 1.4;
-            }
-
-            .anti-cheat-note span {
-                color: var(--neon-pink);
-                font-weight: 600;
-            }
+            .modal-content h2 { color: var(--neon-cyan); margin-bottom: 15px; font-size: 1.2rem; }
+            .modal-content ol { color: #e2e8f0; font-size: 0.85rem; padding-left: 20px; margin-bottom: 20px; line-height: 1.6; }
+            .modal-content li { margin-bottom: 8px; }
+            .close-btn { width: 100%; background: #334155; color: white; }
         </style>
     </head>
     <body>
         <div class="container">
-            <!-- Animated Shield SVG Icon -->
-            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="#00f3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                <path d="M12 8v4"></path>
-                <path d="M12 16h.01"></path>
-            </svg>
+            <!-- 3D Global Map SVG -->
+            <div class="logo-container">
+                <svg class="globe-icon" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M2 12h20"></path>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+            </div>
 
             <h1>AETHERIS</h1>
             <div class="subtitle">Universal Esports Gateway</div>
-
-            <div class="status-badge">
-                <div class="dot"></div>
-                ENGINE ONLINE & ACTIVE
-            </div>
 
             <div class="fun-banner">
                 🎮 HAVE FUN & PLAY FAIR ⚡
             </div>
 
             <div class="hud-grid">
-                <div class="hud-card">
-                    <div class="label">AI Referee</div>
-                    <div class="value">Gemini Vision 2.5</div>
-                </div>
-                <div class="hud-card">
-                    <div class="label">Payment Rails</div>
-                    <div class="value">M-Pesa + Base L2</div>
-                </div>
-                <div class="hud-card">
-                    <div class="label">Anti-Cheat Mode</div>
-                    <div class="value" style="color: var(--neon-green);">ACTIVE ENFORCEMENT</div>
-                </div>
-                <div class="hud-card">
-                    <div class="label">Latency Engine</div>
-                    <div class="value">&lt; 15ms Node</div>
-                </div>
+                <div class="hud-card"><div class="label">AI Referee</div><div class="value">Gemini Vision 2.5</div></div>
+                <div class="hud-card"><div class="label">Payment Rails</div><div class="value">M-Pesa + Base L2</div></div>
             </div>
 
-            <p class="anti-cheat-note">
-                <span>⚠️ FAIR PLAY MANDATE:</span> Real-time vision telemetry actively flags modded APKs, speed hacks, and cheat overlays. Zero-tolerance auto-forfeiture enabled.
-            </p>
+            <!-- Action Buttons -->
+            <div class="control-panel">
+                <button class="btn btn-primary" onclick="alert('Routing to Match Lobby API...')">⚔️ Initialize Match</button>
+                <button class="btn btn-pay" onclick="alert('Opening IntaSend M-Pesa / Web3 Wallet Interface...')">💸 Deposit Stake</button>
+                <button class="btn btn-manual" onclick="toggleModal('manualModal')">📖 System Manual</button>
+            </div>
         </div>
+
+        <!-- System Manual Modal -->
+        <div id="manualModal" class="modal-overlay">
+            <div class="modal-content">
+                <h2>System Manual</h2>
+                <ol>
+                    <li><strong>Initialize:</strong> Click 'Initialize Match' to generate a secure lobby ID.</li>
+                    <li><strong>Stake:</strong> Use the 'Deposit Stake' portal. Provide your phone number for M-Pesa STK push or connect your Web3 wallet.</li>
+                    <li><strong>Play:</strong> Enter the match. The Gemini Vision AI referee monitors your screen telemetry in real-time.</li>
+                    <li><strong>Payout:</strong> Once victory is confirmed, the smart contract/IntaSend rail instantly disperses winnings to the victor.</li>
+                </ol>
+                <button class="btn close-btn" onclick="toggleModal('manualModal')">ACKNOWLEDGE</button>
+            </div>
+        </div>
+
+        <script>
+            function toggleModal(modalId) {
+                const modal = document.getElementById(modalId);
+                modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+            }
+        </script>
     </body>
     </html>
     """
