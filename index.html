@@ -1,139 +1,420 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHERIS | AI Referee & Live Match</title>
+    <title>AETHERIS PRO v8.5 | Autonomous AI Referee Engine</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        aether: {
+                            bg: '#04060A',
+                            panel: 'rgba(11, 15, 25, 0.85)',
+                            cyan: '#00F0FF',
+                            neon: '#39FF14',
+                            amber: '#FFB800',
+                            crimson: '#FF0055',
+                            purple: '#A855F7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { background-color: #0B0E14; color: #E2E8F0; font-family: 'Inter', sans-serif; }
-        .neon-border { border: 1px solid #38BDF8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
-        .chat-container::-webkit-scrollbar { width: 6px; }
-        .chat-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+        
+        body {
+            background-color: #04060A;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 40%),
+                linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+            color: #E2E8F0;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+
+        .neon-border-cyan {
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15), inset 0 0 15px rgba(0, 240, 255, 0.05);
+        }
+
+        .neon-border-crimson {
+            border: 1px solid rgba(255, 0, 85, 0.4);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.2);
+        }
+
+        .neon-border-green {
+            border: 1px solid rgba(57, 255, 20, 0.4);
+            box-shadow: 0 0 20px rgba(57, 255, 20, 0.2);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(5, 8, 15, 0.8); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #00F0FF; border-radius: 2px; }
+
+        @keyframes laser-scan {
+            0% { top: 0%; opacity: 0.8; }
+            50% { opacity: 0.3; }
+            100% { top: 100%; opacity: 0.8; }
+        }
+        .laser-line {
+            position: absolute;
+            left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, #00F0FF, transparent);
+            box-shadow: 0 0 10px #00F0FF;
+            animation: laser-scan 3s linear infinite;
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col items-center justify-center p-4">
+<body class="h-screen flex flex-col justify-between overflow-hidden p-3 md:p-5 select-none">
 
-    <!-- Header -->
-    <div class="w-full max-w-6xl flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold tracking-wider text-sky-400">AETHERIS <span class="text-white text-lg">v8.0</span></h1>
-        <div class="text-sm bg-gray-800 px-4 py-2 rounded-full border border-gray-700">
-            Player ID: <span id="player-id-display" class="font-mono text-sky-300">AETH-001</span>
+    <!-- TOP HUD BAR -->
+    <header class="w-full max-w-7xl mx-auto flex flex-wrap justify-between items-center pb-3 border-b border-slate-800/80">
+        <div class="flex items-center gap-4">
+            <div class="relative flex items-center justify-center">
+                <div class="h-4 w-4 rounded-full bg-cyan-400 animate-ping absolute"></div>
+                <div class="h-3 w-3 rounded-full bg-cyan-300"></div>
+            </div>
+            <div>
+                <h1 class="font-orbitron text-2xl md:text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-200 to-purple-400">
+                    AETHERIS <span class="text-xs px-2 py-0.5 bg-cyan-950 text-cyan-400 rounded border border-cyan-800 font-mono">v8.5 PRO</span>
+                </h1>
+                <p class="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Autonomous Esports Telemetry & Anti-Cheat Engine</p>
+            </div>
         </div>
-    </div>
 
-    <!-- Main Engine Grid -->
-    <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-6 h-[75vh]">
+        <!-- Realtime HUD Telemetry Counters -->
+        <div class="flex items-center gap-3 text-xs font-mono">
+            <div class="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                <span class="text-slate-500">PING:</span>
+                <span id="hud-ping" class="text-cyan-400 font-bold">0 ms</span>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                <span class="text-slate-500">ID:</span>
+                <span id="player-id-display" class="text-purple-400 font-bold">INIT...</span>
+            </div>
+            <div id="connection-status-badge" class="bg-red-950/80 border border-red-800 text-red-400 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2">
+                <span class="h-2 w-2 rounded-full bg-red-500"></span>
+                <span>OFFLINE</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD -->
+    <main class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5 my-auto h-[78vh]">
         
-        <!-- Left: Telemetry & Screen Capture -->
-        <div class="md:col-span-2 bg-gray-900 rounded-xl p-4 neon-border flex flex-col relative">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">Live Screen Telemetry</h2>
-                <span id="ai-status" class="text-red-500 font-bold animate-pulse">AI OFFLINE</span>
-            </div>
+        <!-- LEFT: AI TELEMETRY MONITOR -->
+        <section class="lg:col-span-2 bg-slate-950/80 backdrop-blur-xl rounded-2xl p-4 neon-border-cyan flex flex-col justify-between relative overflow-hidden">
             
-            <!-- Video Element for Screen Capture -->
-            <video id="screen-preview" class="w-full h-full bg-black rounded-lg object-contain border border-gray-800" autoplay muted></video>
-            
-            <button id="start-match-btn" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 px-8 rounded-full shadow-[0_0_15px_rgba(56,189,248,0.8)] transition-all">
-                START MATCH & INITIATE AI REFEREE
-            </button>
-        </div>
-
-        <!-- Right: AI Chat & Announcements -->
-        <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 flex flex-col">
-            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">AI Referee Chat</h2>
-            
-            <div id="chat-box" class="chat-container flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
-                <div class="text-gray-400 text-sm italic">AETHERIS AI: Waiting for match telemetry to begin...</div>
+            <!-- Monitor Header -->
+            <div class="flex justify-between items-center mb-2 z-10">
+                <div class="flex items-center gap-3">
+                    <span class="font-orbitron text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-cyan-400"></span> Live Vision Stream
+                    </span>
+                    <span id="resolution-badge" class="text-[10px] font-mono bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">0x0</span>
+                </div>
+                <div id="ai-verdict-tag" class="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-3 py-1 rounded-md border border-amber-800/80">
+                    AWAITING GAMEPLAY
+                </div>
             </div>
 
-            <div class="flex gap-2">
-                <input type="text" id="chat-input" placeholder="Talk to the AI Referee..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:border-sky-500 text-sm">
-                <button id="send-chat-btn" class="bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg font-bold transition">Send</button>
-            </div>
-        </div>
-    </div>
+            <!-- Screen Capture Viewport -->
+            <div class="relative w-full flex-1 bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                <!-- Raw Video Feed -->
+                <video id="screen-preview" class="w-full h-full object-contain" autoplay muted></video>
+                
+                <!-- Bounding Box Canvas Overlay -->
+                <canvas id="vision-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
+                
+                <!-- Laser Scanner Effect -->
+                <div id="laser-scanner" class="laser-line hidden pointer-events-none"></div>
 
+                <!-- Launch / Overlay Screen -->
+                <div id="launch-overlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center gap-5 z-20">
+                    <div class="relative flex items-center justify-center">
+                        <div class="h-20 w-20 rounded-full bg-cyan-500/10 border border-cyan-400/30 animate-pulse"></div>
+                        <span class="font-orbitron font-black text-2xl text-cyan-400 absolute">AI</span>
+                    </div>
+                    <div class="text-center max-w-md px-4">
+                        <h3 class="font-orbitron text-lg font-bold text-white tracking-wide">START TELEMETRY STREAM</h3>
+                        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                            The AI Referee requires full screen monitoring to detect modified game clients, external hacks, or overlays during gameplay.
+                        </p>
+                    </div>
+                    <button id="start-match-btn" class="font-orbitron bg-gradient-to-r from-cyan-500 via-sky-400 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black tracking-widest py-4 px-10 rounded-xl shadow-[0_0_30px_rgba(0,240,255,0.4)] transition-all transform hover:scale-105 active:scale-95">
+                        INITIALIZE MATCH SESSION
+                    </button>
+                </div>
+            </div>
+
+            <!-- Diagnostics Bar -->
+            <div class="flex justify-between items-center mt-3 text-[11px] font-mono text-slate-500 z-10">
+                <div class="flex items-center gap-4">
+                    <span>PROTOCOL: <strong class="text-slate-300">WSS ENCRYPTED</strong></span>
+                    <span>FPS: <strong id="fps-display" class="text-slate-300">0.0</strong></span>
+                </div>
+                <div>PACKETS: <strong id="frames-sent-display" class="text-cyan-400">0</strong></div>
+            </div>
+        </section>
+
+        <!-- RIGHT: AI REFEREE CONSOLE -->
+        <section class="bg-slate-950/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-800 flex flex-col justify-between">
+            
+            <!-- Console Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h2 class="font-orbitron text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                    <span class="h-2 w-2 rounded-full bg-purple-400 animate-pulse"></span>
+                    AI Referee Neural Console
+                </h2>
+                <span class="text-[10px] font-mono bg-purple-950/80 text-purple-300 px-2 py-0.5 rounded border border-purple-800">LIVE AUTO-DECISION</span>
+            </div>
+
+            <!-- Message Box -->
+            <div id="chat-box" class="custom-scrollbar flex-1 overflow-y-auto my-3 space-y-3 pr-1 text-xs">
+                <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400">
+                    <span class="text-cyan-400 font-bold block mb-1 font-orbitron">SYSTEM STANDBY</span>
+                    Share screen telemetry to activate real-time anti-cheat monitoring and automated winner settlement.
+                </div>
+            </div>
+
+            <!-- Quick Action Macros -->
+            <div class="py-2 border-t border-slate-800/80 flex gap-1.5 overflow-x-auto">
+                <button onclick="sendQuickMacro('/gg')" class="bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] font-mono px-2.5 py-1 rounded border border-slate-700 transition">GG</button>
+                <button onclick="sendQuickMacro('I finished the match, declare winner!')" class="bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 text-[10px] font-mono px-2.5 py-1 rounded border border-cyan-800 transition">Claim Victory 🏆</button>
+                <button onclick="sendQuickMacro('Checking ping status')" class="bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] font-mono px-2.5 py-1 rounded border border-slate-700 transition">Check Ping</button>
+            </div>
+
+            <!-- Chat Input Form -->
+            <form id="chat-form" class="flex gap-2">
+                <input type="text" id="chat-input" placeholder="Message AI Referee..." autocomplete="off" class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 transition placeholder:text-slate-600">
+                <button type="submit" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold px-4 rounded-xl text-xs transition font-orbitron">
+                    SEND
+                </button>
+            </form>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full max-w-7xl mx-auto flex justify-between items-center text-[10px] font-mono text-slate-600 border-t border-slate-900 pt-2">
+        <span>AETHERIS ESPORTS ENGINE &copy; 2026</span>
+        <span>SERVER: aetheris-backend-s3hu.onrender.com</span>
+    </footer>
+
+    <!-- ENGINE LOGIC -->
     <script>
+        // Pre-configured Render Domain
+        const RENDER_BACKEND_DOMAIN = "aetheris-backend-s3hu.onrender.com";
+        const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        const WS_PROTOCOL = isLocal ? "ws://" : "wss://";
+        const WS_HOST = isLocal ? "localhost:8000" : RENDER_BACKEND_DOMAIN;
+
+        // Elements
         const startBtn = document.getElementById('start-match-btn');
+        const launchOverlay = document.getElementById('launch-overlay');
         const videoElem = document.getElementById('screen-preview');
+        const canvasElem = document.getElementById('vision-canvas');
+        const laserScanner = document.getElementById('laser-scanner');
         const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
         const chatInput = document.getElementById('chat-input');
-        const sendBtn = document.getElementById('send-chat-btn');
-        const aiStatus = document.getElementById('ai-status');
-        
+        const connBadge = document.getElementById('connection-status-badge');
+        const aiVerdictTag = document.getElementById('ai-verdict-tag');
+        const playerIdDisplay = document.getElementById('player-id-display');
+        const resDisplay = document.getElementById('resolution-badge');
+        const framesDisplay = document.getElementById('frames-sent-display');
+        const fpsDisplay = document.getElementById('fps-display');
+        const pingDisplay = document.getElementById('hud-ping');
+
+        // State
         let ws;
         let mediaStream;
-        const inGameId = "player_" + Math.floor(Math.random() * 1000); 
+        let packetCount = 0;
+        let lastPingTime = 0;
+        const inGameId = "PLAYER_" + Math.floor(10000 + Math.random() * 90000);
+        playerIdDisplay.textContent = inGameId;
 
-        // Append messages to UI
-        function appendMessage(sender, text, isAnnouncement = false) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `p-2 rounded-lg text-sm ${sender === 'AI' ? (isAnnouncement ? 'bg-sky-900 border border-sky-400 text-white font-bold text-center' : 'bg-gray-800 text-sky-300') : 'bg-gray-700 text-white self-end'}`;
-            msgDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
-            chatBox.appendChild(msgDiv);
+        // Web Audio Synthesizer (SFX Engine)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSFX(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'connect') {
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'announcement') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            }
+        }
+
+        // Bounding Box Vision Overlay Generator
+        function drawAIOverlay() {
+            const ctx = canvasElem.getContext('2d');
+            canvasElem.width = videoElem.videoWidth || 640;
+            canvasElem.height = videoElem.videoHeight || 360;
+            ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
+
+            if (mediaStream && videoElem.videoWidth > 0) {
+                // Simulate AI vision bounding targets
+                ctx.strokeStyle = '#00F0FF';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                
+                // Draw HUD reticle center
+                const cx = canvasElem.width / 2;
+                const cy = canvasElem.height / 2;
+                ctx.strokeRect(cx - 100, cy - 60, 200, 120);
+
+                ctx.fillStyle = '#00F0FF';
+                ctx.font = '10px Orbitron';
+                ctx.fillText('AI TELEMETRY LOCK: VERIFIED', cx - 95, cy - 68);
+            }
+            requestAnimationFrame(drawAIOverlay);
+        }
+
+        function logMessage(sender, text, type = 'chat') {
+            const wrapper = document.createElement('div');
+            if (type === 'announcement') {
+                playSFX('announcement');
+                wrapper.className = "p-3 rounded-xl bg-gradient-to-r from-cyan-950 via-slate-900 to-purple-950 border border-cyan-400 text-cyan-200 text-center font-bold tracking-wide shadow-[0_0_20px_rgba(0,240,255,0.3)] my-2 animate-bounce font-orbitron";
+                wrapper.innerHTML = `🏆 <span class="uppercase">${sender}:</span> ${text}`;
+            } else if (type === 'system') {
+                wrapper.className = "p-2 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-400 text-[11px] italic";
+                wrapper.innerHTML = `<strong class="text-amber-400 font-normal">${sender}:</strong> ${text}`;
+            } else {
+                const isAI = sender === 'AI REFEREE';
+                wrapper.className = `p-3 rounded-xl border ${isAI ? 'bg-slate-900/90 border-cyan-900/60 text-cyan-300' : 'bg-slate-800/80 border-slate-700 text-slate-100 ml-4'}`;
+                wrapper.innerHTML = `<span class="font-bold ${isAI ? 'text-cyan-400 font-orbitron' : 'text-purple-400'} block mb-0.5">${sender}</span>${text}`;
+            }
+            chatBox.appendChild(wrapper);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // Start Match & WebSocket
+        function connectWebSocket() {
+            const wsUrl = `${WS_PROTOCOL}${WS_HOST}/ws/referee/${inGameId}`;
+            lastPingTime = Date.now();
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                const latency = Date.now() - lastPingTime;
+                pingDisplay.textContent = `${latency} ms`;
+                connBadge.className = "bg-emerald-950/80 border border-emerald-800 text-emerald-400 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 font-mono";
+                connBadge.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span><span>ONLINE</span>`;
+                logMessage('SYSTEM', 'Connected to AETHERIS live referee engine.', 'system');
+                playSFX('connect');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'chat') {
+                        logMessage('AI REFEREE', data.message);
+                    } else if (data.type === 'announcement') {
+                        logMessage('AI ANNOUNCEMENT', data.message, 'announcement');
+                        aiVerdictTag.textContent = "MATCH DECIDED";
+                        aiVerdictTag.className = "text-xs font-mono font-bold text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded border border-emerald-700 neon-border-green";
+                    }
+                } catch (e) { console.error(e); }
+            };
+
+            ws.onclose = () => {
+                connBadge.className = "bg-red-950/80 border border-red-800 text-red-400 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 font-mono";
+                connBadge.innerHTML = `<span class="h-2 w-2 rounded-full bg-red-500"></span><span>OFFLINE</span>`;
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
         startBtn.addEventListener('click', async () => {
             try {
-                // Request Screen Share
-                mediaStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                mediaStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { frameRate: { max: 30 } }, audio: false
+                });
+
                 videoElem.srcObject = mediaStream;
-                startBtn.classList.add('hidden');
-                
-                aiStatus.textContent = "AI MONITORING ACTIVE";
-                aiStatus.className = "text-green-400 font-bold animate-pulse";
+                launchOverlay.classList.add('hidden');
+                laserScanner.classList.remove('hidden');
 
-                // Connect WebSocket to FastAPI Backend
-                ws = new WebSocket(`ws://localhost:8000/ws/referee/${inGameId}`);
+                aiVerdictTag.textContent = "MONITORING ACTIVE";
+                aiVerdictTag.className = "text-xs font-mono font-bold text-cyan-400 bg-cyan-950/80 px-3 py-1 rounded border border-cyan-700 animate-pulse neon-border-cyan";
 
-                ws.onopen = () => {
-                    appendMessage('AI', 'Connection established. I am monitoring your screen for modifications. Play clean, play hard.');
-                    
-                    // Capture frames and send via WebSockets every 2 seconds for anti-cheat
-                    setInterval(() => {
-                        if (ws.readyState === WebSocket.OPEN) {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = videoElem.videoWidth;
-                            canvas.height = videoElem.videoHeight;
-                            canvas.getContext('2d').drawImage(videoElem, 0, 0);
-                            const frameData = canvas.toDataURL('image/jpeg', 0.5); // Compress to save bandwidth
-                            
-                            ws.send(JSON.stringify({ type: 'telemetry_frame', data: frameData }));
-                        }
-                    }, 2000);
-                };
+                const track = mediaStream.getVideoTracks()[0];
+                const settings = track.getSettings();
+                resDisplay.textContent = `${settings.width || 1280}x${settings.height || 720}`;
 
-                ws.onmessage = (event) => {
-                    const response = JSON.parse(event.data);
-                    if (response.type === 'chat') {
-                        appendMessage('AI', response.message);
-                    } else if (response.type === 'announcement') {
-                        appendMessage('AI', response.message, true);
-                        if(response.action === 'trigger_payout') {
-                            appendMessage('SYSTEM', 'Initiating M-PESA Daraja payout sequence...');
-                        }
+                drawAIOverlay();
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN && videoElem.videoWidth > 0) {
+                        canvas.width = 640; 
+                        canvas.height = 360;
+                        ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+                        
+                        ws.send(JSON.stringify({ 
+                            type: 'telemetry_frame', 
+                            data: canvas.toDataURL('image/jpeg', 0.4) 
+                        }));
+                        
+                        packetCount++;
+                        framesDisplay.textContent = packetCount;
+                        fpsDisplay.textContent = "0.5";
                     }
+                }, 2000);
+
+                track.onended = () => {
+                    launchOverlay.classList.remove('hidden');
+                    laserScanner.classList.add('hidden');
+                    aiVerdictTag.textContent = "TELEMETRY HALTED";
+                    aiVerdictTag.className = "text-xs font-mono font-bold text-red-400 bg-red-950/80 px-3 py-1 rounded border border-red-800 neon-border-crimson";
+                    logMessage('SYSTEM', 'Screen capture stopped by user.', 'system');
                 };
 
             } catch (err) {
-                console.error("Error starting match:", err);
-                alert("You must share your screen to allow the AI Referee to monitor the match.");
+                alert("Screen share permission is strictly required for the AI Referee.");
             }
         });
 
-        // Send Chat to AI
-        sendBtn.addEventListener('click', () => {
-            const text = chatInput.value;
-            if (text && ws && ws.readyState === WebSocket.OPEN) {
-                appendMessage('You', text);
-                ws.send(JSON.stringify({ type: 'player_chat', text: text }));
+        function sendQuickMacro(msg) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                logMessage('YOU', msg);
+                ws.send(JSON.stringify({ type: 'player_chat', text: msg }));
+            }
+        }
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const msg = chatInput.value.trim();
+            if (msg) {
+                sendQuickMacro(msg);
                 chatInput.value = '';
             }
         });
+
+        connectWebSocket();
     </script>
 </body>
 </html>
