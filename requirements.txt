@@ -1,5 +1,6 @@
 fastapi
-uvicorn[standard]
-pydantic
-google-genai
-intasend-python
+uvicorn
+sqlalchemy
+requests
+python-dotenv
+web3
