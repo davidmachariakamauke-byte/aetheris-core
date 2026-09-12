@@ -42,6 +42,7 @@
       align-items: center;
       gap: 18px;
       box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
+      position: relative;
     }
 
     /* Top Pill Header */
@@ -56,7 +57,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 0 10px rgba(ff, 0, 127, 0.3);
+      box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
     }
 
     /* Hexagon Logo */
@@ -64,13 +65,11 @@
       margin-top: 10px;
       width: 65px;
       height: 75px;
-      background: transparent;
       clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      border: 2px solid var(--cyan-glow);
+      background: var(--cyan-glow);
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
     }
 
     .logo-inner {
@@ -106,7 +105,7 @@
       font-weight: 600;
     }
 
-    /* Fair Play Mandate Card */
+    /* Mandate Card */
     .mandate-card {
       width: 100%;
       background: #150918;
@@ -200,17 +199,78 @@
       border: 1px solid var(--cyan-glow);
     }
 
-    .btn:active {
-      transform: scale(0.98);
+    /* STK Deposit Cyberpunk Modal */
+    .modal-overlay {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(5, 7, 13, 0.95);
+      z-index: 100;
+      padding: 20px;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--green-glow);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--green-glow);
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 15px;
+    }
+
+    .form-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    .form-input {
+      background: #05070d;
+      border: 1px solid #1a2336;
+      color: #ffffff;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--green-glow);
+    }
+
+    .status-msg {
+      font-size: 0.75rem;
+      margin-top: 10px;
+      color: var(--cyan-glow);
+      min-height: 18px;
     }
   </style>
 </head>
 <body>
 
   <div class="app-container">
-    <div class="header-pill">
-      🎮 HAVE FUN & PLAY FAIR ⚡
-    </div>
+    <div class="header-pill">🎮 HAVE FUN & PLAY FAIR ⚡</div>
 
     <div class="logo-container">
       <div class="logo-inner">A</div>
@@ -222,9 +282,7 @@
     </div>
 
     <div class="mandate-card">
-      <div class="mandate-title">
-        ⚠️ FAIR PLAY MANDATE
-      </div>
+      <div class="mandate-title">⚠️ FAIR PLAY MANDATE</div>
       <p class="mandate-text">
         Real-time vision telemetry actively flags modded APKs, speed hacks, and cheat overlays. Zero-tolerance auto-forfeiture enabled.
       </p>
@@ -243,31 +301,76 @@
 
     <div class="btn-group">
       <button class="btn btn-white" onclick="alert('Match initialization queue active.')">INITIALIZE MATCH</button>
-      <button class="btn btn-green" onclick="handleDeposit()">DEPOSIT STAKE</button>
-      <button class="btn btn-cyan" onclick="alert('Connecting to AI Referee Telemetry...')">LIVE AI REFEREE TERMINAL</button>
+      <button class="btn btn-green" onclick="openModal()">DEPOSIT STAKE</button>
+      <button class="btn btn-cyan" onclick="alert('Connecting to AI Referee Terminal...')">LIVE AI REFEREE TERMINAL</button>
+    </div>
+
+    <!-- Cyberpunk STK Push Modal Overlay -->
+    <div class="modal-overlay" id="stkModal">
+      <div class="modal-content">
+        <div class="modal-title">M-PESA ESCROW STAKE</div>
+        
+        <div class="form-group">
+          <label class="form-label">SAFARICOM PHONE NUMBER</label>
+          <input type="text" id="phoneInput" class="form-input" placeholder="2547XXXXXXXX" value="2547">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">MATCH STAKE AMOUNT (KES)</label>
+          <input type="number" id="amountInput" class="form-input" value="10" readonly>
+        </div>
+
+        <button class="btn btn-green" style="margin-top: 10px;" onclick="submitDeposit()">SEND STK PUSH</button>
+        <button class="btn btn-cyan" style="margin-top: 8px; background: transparent; border-color: #334155;" onclick="closeModal()">CANCEL</button>
+
+        <div class="status-msg" id="statusMsg"></div>
+      </div>
     </div>
   </div>
 
   <script>
-    async function handleDeposit() {
-      const phone = prompt("Enter your M-Pesa phone number (Format: 2547XXXXXXXX):");
-      if (!phone) return;
+    function openModal() {
+      document.getElementById('stkModal').style.display = 'flex';
+      document.getElementById('statusMsg').innerText = '';
+    }
+
+    function closeModal() {
+      document.getElementById('stkModal').style.display = 'none';
+    }
+
+    async function submitDeposit() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      const amount = document.getElementById('amountInput').value;
+      const status = document.getElementById('statusMsg');
+
+      if (!phone || phone.length < 12) {
+        status.style.color = '#ff007f';
+        status.innerText = 'Invalid format. Use 2547XXXXXXXX';
+        return;
+      }
+
+      status.style.color = '#00f0ff';
+      status.innerText = 'Dispatching STK Push prompt...';
 
       const matchId = "MATCH_" + Math.floor(1000 + Math.random() * 9000);
-      
+
       try {
-        const response = await fetch(`/api/v1/deposit?phone_number=${encodeURIComponent(phone)}&match_id=${matchId}`, {
+        const res = await fetch(`/api/v1/deposit?phone_number=${encodeURIComponent(phone)}&match_id=${matchId}&amount=${amount}`, {
           method: 'POST'
         });
-        const data = await response.json();
-        
-        if (response.ok) {
-          alert(`STK Push sent to ${phone}. Please enter your M-Pesa PIN on your phone to lock the 10 KES stake.`);
+        const data = await res.json();
+
+        if (res.ok) {
+          status.style.color = '#00ff88';
+          status.innerText = 'STK Push sent! Enter M-Pesa PIN on your mobile device.';
+          setTimeout(closeModal, 4000);
         } else {
-          alert(`Error: ${data.detail || 'Failed to trigger STK Push'}`);
+          status.style.color = '#ff007f';
+          status.innerText = data.detail || 'STK Push Failed.';
         }
       } catch (err) {
-        alert("Failed to connect to payment backend.");
+        status.style.color = '#ff007f';
+        status.innerText = 'Server error. Check API connection.';
       }
     }
   </script>
