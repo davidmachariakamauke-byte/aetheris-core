@@ -1,219 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AETHERIS - Omniversal Escrow V8.0</title>
-  <style>
-    :root {
-      --bg-color: #05070d;
-      --card-bg: #0b101d;
-      --cyan-glow: #00f0ff;
-      --pink-glow: #ff007f;
-      --green-glow: #00ff88;
-      --red-alert: #ff1e1e;
-      --text-muted: #8a99ad;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-
-    body {
-      background-color: var(--bg-color); color: #ffffff;
-      display: flex; justify-content: center;
-      min-height: 100vh; padding: 2vh 15px; overflow-x: hidden;
-    }
-
-    .app-container {
-      width: 100%; max-width: 440px; background: var(--bg-color);
-      border-left: 2px solid var(--cyan-glow); border-right: 2px solid var(--pink-glow);
-      padding: clamp(15px, 4vw, 25px); display: flex; flex-direction: column;
-      align-items: center; gap: clamp(12px, 3vw, 18px);
-      box-shadow: 0 0 40px rgba(0, 240, 255, 0.15); border-radius: 8px;
-    }
-
-    /* Animated Pulsing Logo */
-    @keyframes pulseGlow {
-      0% { box-shadow: 0 0 10px var(--cyan-glow); border-color: var(--cyan-glow); }
-      50% { box-shadow: 0 0 30px var(--cyan-glow), 0 0 10px #fff; border-color: #fff; }
-      100% { box-shadow: 0 0 10px var(--cyan-glow); border-color: var(--cyan-glow); }
-    }
-    .logo-container {
-      width: 65px; height: 75px; background: var(--cyan-glow);
-      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      display: flex; align-items: center; justify-content: center; animation: pulseGlow 3s infinite alternate;
-    }
-    .logo-inner {
-      width: 59px; height: 69px; background: var(--card-bg);
-      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 2rem; font-weight: 900; color: var(--cyan-glow); text-shadow: 0 0 10px var(--cyan-glow);
-    }
-
-    .title-group { text-align: center; width: 100%; }
-    .main-title { font-size: clamp(1.8rem, 6vw, 2.2rem); font-weight: 900; letter-spacing: 4px; }
-    .subtitle { font-size: clamp(0.65rem, 3vw, 0.75rem); color: var(--green-glow); letter-spacing: 3px; font-weight: 600; }
-
-    /* Modals with Blur */
-    .modal-overlay {
-      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(5, 7, 13, 0.9); backdrop-filter: blur(8px);
-      z-index: 100; padding: 20px; flex-direction: column; justify-content: center; align-items: center;
-    }
-    .modal-content {
-      width: 100%; max-width: 400px; background: var(--card-bg); border: 1px solid var(--green-glow);
-      border-radius: 8px; padding: clamp(15px, 5vw, 25px); box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
-      max-height: 90vh; overflow-y: auto;
-    }
-
-    .modal-title { font-size: clamp(0.9rem, 4vw, 1.1rem); font-weight: 800; color: var(--green-glow); margin-bottom: 12px; }
-    .form-input { 
-      background: #05070d; border: 1px solid #1a2336; color: #ffffff; 
-      padding: 12px; border-radius: 4px; width: 100%; outline: none; margin-bottom: 15px; font-size: 16px; 
-    }
-    .form-input:focus { border-color: var(--green-glow); }
-
-    /* Buttons */
-    .btn {
-      width: 100%; padding: 16px 10px; font-size: clamp(0.75rem, 3.5vw, 0.9rem); font-weight: 800; letter-spacing: 1px;
-      cursor: pointer; border: none; clip-path: polygon(0 0, 96% 0, 100% 35%, 100% 100%, 4% 100%, 0 65%);
-      transition: all 0.2s ease; margin-bottom: 10px; text-transform: uppercase;
-    }
-    .btn:active { transform: scale(0.98); }
-    .btn-white { background: #ffffff; color: #05070d; }
-    .btn-green { background: #042416; color: var(--green-glow); border: 1px solid var(--green-glow); }
-    .btn-pink { background: #2a0514; color: var(--pink-glow); border: 1px solid var(--pink-glow); }
-    .btn-cyan { background: #042030; color: var(--cyan-glow); border: 1px solid var(--cyan-glow); }
-
-    /* CRT Terminal Console */
-    .terminal-container {
-      width: 100%; height: 350px; background: #000; border: 2px solid var(--cyan-glow);
-      border-radius: 4px; padding: 10px; display: flex; flex-direction: column;
-      position: relative; overflow: hidden;
-    }
-    .terminal-output {
-      flex-grow: 1; overflow-y: auto; color: var(--green-glow); font-family: monospace;
-      font-size: 0.8rem; line-height: 1.4; margin-bottom: 10px; word-wrap: break-word;
-    }
-    .terminal-input-row { display: flex; align-items: center; gap: 5px; }
-    .terminal-input {
-      background: transparent; border: none; color: #fff; font-family: monospace;
-      font-size: 0.8rem; flex-grow: 1; outline: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHERIS | AI Referee & Live Match</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0B0E14; color: #E2E8F0; font-family: 'Inter', sans-serif; }
+        .neon-border { border: 1px solid #38BDF8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+        .chat-container::-webkit-scrollbar { width: 6px; }
+        .chat-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    </style>
 </head>
-<body>
+<body class="h-screen flex flex-col items-center justify-center p-4">
 
-  <div class="app-container">
-    <div class="logo-container"><div class="logo-inner">A</div></div>
-    
-    <div class="title-group">
-      <h1 class="main-title">AETHERIS</h1>
-      <p class="subtitle">MULTI-PLAYER ESCROW PROTOCOL V8.0</p>
-    </div>
-
-    <!-- Main Buttons -->
-    <button class="btn btn-white" onclick="openInitModal()">1. HOST NEW MATCH</button>
-    <button class="btn btn-green" onclick="openDepositModal()">2. BIND & STAKE STK</button>
-    <button class="btn btn-pink" onclick="alert('File upload prompt: Upload Victory Screenshot for AI Analysis.')">3. SUBMIT VICTORY PROOF</button>
-    <button class="btn btn-cyan" onclick="openTerminal()">LIVE AI REFEREE</button>
-
-    <!-- Init Modal -->
-    <div class="modal-overlay" id="initModal">
-      <div class="modal-content" style="border-color: var(--cyan-glow);">
-        <div class="modal-title" style="color: var(--cyan-glow);">LOBBY GENERATED</div>
-        <p style="font-size: 0.8rem; color: #8a99ad; margin-bottom: 10px;">Share this link. Works for 2-player PES or 20-player Ludo/Militia.</p>
-        <div style="background: #05070d; padding: 12px; border: 1px dashed var(--cyan-glow); color: var(--cyan-glow); font-family: monospace; word-break: break-all; margin-bottom: 15px; text-align: center;" id="matchLinkText">https://aetheris.onrender.com/join/MATCH_8800</div>
-        <button class="btn btn-cyan" onclick="closeModal('initModal')">CLOSE</button>
-      </div>
-    </div>
-
-    <!-- Stake & Bind Modal -->
-    <div class="modal-overlay" id="depositModal">
-      <div class="modal-content">
-        <div class="modal-title">BIND IDENTITY & STAKE</div>
-        
-        <label style="font-size: 0.75rem; color: var(--text-muted);">IN-GAME USERNAME (e.g. SnipeZz)</label>
-        <input type="text" id="gameIdInput" class="form-input" placeholder="Enter Exact Username">
-
-        <label style="font-size: 0.75rem; color: var(--text-muted);">SAFARICOM PHONE NUMBER</label>
-        <input type="text" id="phoneInput" class="form-input" placeholder="2547XXXXXXXX" value="2547">
-        
-        <label style="font-size: 0.75rem; color: var(--text-muted);">POOL STAKE (KES)</label>
-        <input type="number" id="amountInput" class="form-input" value="10" readonly>
-        
-        <button class="btn btn-green" onclick="submitDeposit()">SEND STK PUSH</button>
-        <button class="btn btn-white" style="background: transparent; color: #fff; border: 1px solid #334155;" onclick="closeModal('depositModal')">CANCEL</button>
-        <div id="statusMsg" style="font-size: 0.75rem; margin-top: 10px; color: var(--cyan-glow); text-align: center;"></div>
-      </div>
-    </div>
-
-    <!-- AI Terminal -->
-    <div class="modal-overlay" id="terminalModal" style="background: rgba(0,0,0,0.95);">
-      <div class="terminal-container" style="max-width: 100%; border: none;">
-        <div class="terminal-output" id="termOutput">
-          <span style="color: var(--cyan-glow);">SYS: OMNIVERSAL ARBITRATION ONLINE.</span><br>
-          Awaiting vision telemetry...<br><br>
+    <!-- Header -->
+    <div class="w-full max-w-6xl flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold tracking-wider text-sky-400">AETHERIS <span class="text-white text-lg">v8.0</span></h1>
+        <div class="text-sm bg-gray-800 px-4 py-2 rounded-full border border-gray-700">
+            Player ID: <span id="player-id-display" class="font-mono text-sky-300">AETH-001</span>
         </div>
-        <div class="terminal-input-row">
-          <span style="color: var(--cyan-glow); font-family: monospace;">SYS:~$</span>
-          <input type="text" id="termInput" class="terminal-input" autocomplete="off" onkeypress="handleTerminalEnter(event)">
-        </div>
-      </div>
-      <button class="btn btn-cyan" style="margin-top: 15px;" onclick="closeModal('terminalModal')">EXIT</button>
     </div>
-  </div>
 
-  <script>
-    let currentMatchId = "MATCH_8800";
+    <!-- Main Engine Grid -->
+    <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-6 h-[75vh]">
+        
+        <!-- Left: Telemetry & Screen Capture -->
+        <div class="md:col-span-2 bg-gray-900 rounded-xl p-4 neon-border flex flex-col relative">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Live Screen Telemetry</h2>
+                <span id="ai-status" class="text-red-500 font-bold animate-pulse">AI OFFLINE</span>
+            </div>
+            
+            <!-- Video Element for Screen Capture -->
+            <video id="screen-preview" class="w-full h-full bg-black rounded-lg object-contain border border-gray-800" autoplay muted></video>
+            
+            <button id="start-match-btn" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 px-8 rounded-full shadow-[0_0_15px_rgba(56,189,248,0.8)] transition-all">
+                START MATCH & INITIATE AI REFEREE
+            </button>
+        </div>
 
-    function openInitModal() { document.getElementById('initModal').style.display = 'flex'; }
-    function openDepositModal() { document.getElementById('depositModal').style.display = 'flex'; }
-    function openTerminal() { document.getElementById('terminalModal').style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        <!-- Right: AI Chat & Announcements -->
+        <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 flex flex-col">
+            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">AI Referee Chat</h2>
+            
+            <div id="chat-box" class="chat-container flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
+                <div class="text-gray-400 text-sm italic">AETHERIS AI: Waiting for match telemetry to begin...</div>
+            </div>
 
-    async function submitDeposit() {
-      const phone = document.getElementById('phoneInput').value.trim();
-      const gameId = document.getElementById('gameIdInput').value.trim();
-      const amount = document.getElementById('amountInput').value;
-      const status = document.getElementById('statusMsg');
+            <div class="flex gap-2">
+                <input type="text" id="chat-input" placeholder="Talk to the AI Referee..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:border-sky-500 text-sm">
+                <button id="send-chat-btn" class="bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg font-bold transition">Send</button>
+            </div>
+        </div>
+    </div>
 
-      if (!gameId) { status.style.color = '#ff1e1e'; status.innerText = 'Game Username required.'; return; }
-      if (!phone || phone.length < 12) { status.style.color = '#ff1e1e'; status.innerText = 'Invalid Phone.'; return; }
-      
-      status.style.color = '#00f0ff'; status.innerText = `Binding ${gameId} and sending STK Push...`;
+    <script>
+        const startBtn = document.getElementById('start-match-btn');
+        const videoElem = document.getElementById('screen-preview');
+        const chatBox = document.getElementById('chat-box');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-chat-btn');
+        const aiStatus = document.getElementById('ai-status');
+        
+        let ws;
+        let mediaStream;
+        const inGameId = "player_" + Math.floor(Math.random() * 1000); 
 
-      try {
-        const res = await fetch(`/api/v1/deposit?phone_number=${encodeURIComponent(phone)}&match_id=${currentMatchId}&amount=${amount}&in_game_id=${encodeURIComponent(gameId)}`, { method: 'POST' });
-        if (res.ok) {
-          status.style.color = '#00ff88'; status.innerText = 'STK Sent! Waiting for PIN...';
-        } else {
-          status.style.color = '#ff1e1e'; status.innerText = 'STK Push Failed.';
+        // Append messages to UI
+        function appendMessage(sender, text, isAnnouncement = false) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `p-2 rounded-lg text-sm ${sender === 'AI' ? (isAnnouncement ? 'bg-sky-900 border border-sky-400 text-white font-bold text-center' : 'bg-gray-800 text-sky-300') : 'bg-gray-700 text-white self-end'}`;
+            msgDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
-      } catch (err) { status.style.color = '#ff1e1e'; status.innerText = 'API Connection Error.'; }
-    }
 
-    async function handleTerminalEnter(e) {
-      if (e.key === 'Enter') {
-        const inputField = document.getElementById('termInput');
-        const query = inputField.value.trim();
-        if(!query) return;
-        
-        const output = document.getElementById('termOutput');
-        output.innerHTML += `<div><span style="color: var(--cyan-glow);">SYS:~$</span> ${query}</div>`;
-        inputField.value = '';
-        output.scrollTop = output.scrollHeight;
+        // Start Match & WebSocket
+        startBtn.addEventListener('click', async () => {
+            try {
+                // Request Screen Share
+                mediaStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                videoElem.srcObject = mediaStream;
+                startBtn.classList.add('hidden');
+                
+                aiStatus.textContent = "AI MONITORING ACTIVE";
+                aiStatus.className = "text-green-400 font-bold animate-pulse";
 
-        // Simulated AI Response
-        setTimeout(() => {
-          if(query.includes("win")) {
-            output.innerHTML += `<div>> [AI VISION]: Match Screenshot Analyzed. Winner verified as 'SnipeZz'. Payout initiating to bound M-PESA...</div><br>`;
-          } else {
-            output.innerHTML += `<div>> [SYSTEM]: Query processed. Awaiting match completion.</div><br>`;
-          }
-          output.scrollTop = output.scrollHeight;
-        }, 800);
-      }
-    }
-  </script>
+                // Connect WebSocket to FastAPI Backend
+                ws = new WebSocket(`ws://localhost:8000/ws/referee/${inGameId}`);
+
+                ws.onopen = () => {
+                    appendMessage('AI', 'Connection established. I am monitoring your screen for modifications. Play clean, play hard.');
+                    
+                    // Capture frames and send via WebSockets every 2 seconds for anti-cheat
+                    setInterval(() => {
+                        if (ws.readyState === WebSocket.OPEN) {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = videoElem.videoWidth;
+                            canvas.height = videoElem.videoHeight;
+                            canvas.getContext('2d').drawImage(videoElem, 0, 0);
+                            const frameData = canvas.toDataURL('image/jpeg', 0.5); // Compress to save bandwidth
+                            
+                            ws.send(JSON.stringify({ type: 'telemetry_frame', data: frameData }));
+                        }
+                    }, 2000);
+                };
+
+                ws.onmessage = (event) => {
+                    const response = JSON.parse(event.data);
+                    if (response.type === 'chat') {
+                        appendMessage('AI', response.message);
+                    } else if (response.type === 'announcement') {
+                        appendMessage('AI', response.message, true);
+                        if(response.action === 'trigger_payout') {
+                            appendMessage('SYSTEM', 'Initiating M-PESA Daraja payout sequence...');
+                        }
+                    }
+                };
+
+            } catch (err) {
+                console.error("Error starting match:", err);
+                alert("You must share your screen to allow the AI Referee to monitor the match.");
+            }
+        });
+
+        // Send Chat to AI
+        sendBtn.addEventListener('click', () => {
+            const text = chatInput.value;
+            if (text && ws && ws.readyState === WebSocket.OPEN) {
+                appendMessage('You', text);
+                ws.send(JSON.stringify({ type: 'player_chat', text: text }));
+                chatInput.value = '';
+            }
+        });
+    </script>
 </body>
 </html>
