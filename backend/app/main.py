@@ -1,74 +1,73 @@
-import os
-from backend.app.database import Base, engine, get_db
-from backend.app.models import MatchEscrow
-from backend.app.services.mpesa_rail import MpesaRail
-from backend.app.services.web3_rail import Web3Rail
-from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
+import json
+import asyncio
 
-Base.metadata.create_all(bind=engine)
-load_dotenv()
-
-app = FastAPI(title="Aetheris Esports Engine V8")
+app = FastAPI(title="AETHERIS v8.0 AI Engine")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-mpesa_service = MpesaRail()
-web3_service = Web3Rail()
+class MatchManager:
+    def __init__(self):
+        self.active_matches = {}
 
-RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://your-app-name.onrender.com")
+    async def connect(self, websocket: WebSocket, in_game_id: str):
+        await websocket.accept()
+        self.active_matches[in_game_id] = websocket
 
-class ChatMessage(BaseModel):
-    message: str
-    match_id: str = "UNKNOWN"
+    def disconnect(self, in_game_id: str):
+        if in_game_id in self.active_matches:
+            del self.active_matches[in_game_id]
 
-@app.get("/", response_class=HTMLResponse)
-async def serve_ui():
-  if os.path.exists("index.html"):
-    with open("index.html", "r") as f:
-      return f.read()
-  return "<h1>Aetheris Backend Service Online</h1>"
+    async def send_ai_message(self, in_game_id: str, message: str, msg_type: str = "chat", action: str = None):
+        if in_game_id in self.active_matches:
+            payload = {"type": msg_type, "message": message}
+            if action:
+                payload["action"] = action
+            await self.active_matches[in_game_id].send_text(json.dumps(payload))
 
-# Notice we added in_game_id here
-@app.post("/api/v1/deposit")
-async def initiate_deposit(
-    phone_number: str,
-    match_id: str,
-    in_game_id: str = "Player_Unknown", 
-    amount: int = 10,
-    db: Session = Depends(get_db),
-):
-  callback_url = f"{RENDER_URL}/api/v1/payments/stk-callback"
+manager = MatchManager()
 
-  response = mpesa_service.trigger_stk_push(
-      phone_number=phone_number,
-      amount=amount,
-      account_ref=match_id,
-      callback_url=callback_url,
-  )
+@app.websocket("/ws/referee/{in_game_id}")
+async def ai_referee_endpoint(websocket: WebSocket, in_game_id: str):
+    await manager.connect(websocket, in_game_id)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            payload = json.loads(data)
 
-  checkout_request_id = response.get("CheckoutRequestID")
-  if not checkout_request_id:
-    raise HTTPException(status_code=400, detail="STK Push failure")
+            # 1. Telemetry / Screen Monitoring Logic
+            if payload.get("type") == "telemetry_frame":
+                # FUTURE: Pass payload["data"] (base64 image) to a Vision Model (e.g., Gemini Flash/Pro)
+                # to detect third-party mod menus, crosshairs, or modified UI.
+                
+                # For now, simulate the AI silently analyzing
+                pass 
 
-  new_escrow = MatchEscrow(
-      match_id=match_id,
-      player_phone=phone_number,
-      in_game_id=in_game_id, # Bound to the database!
-      amount=float(amount),
-      checkout_request_id=checkout_request_id,
-      status="pending",
-  )
-  db.add(new_escrow)
-  db.commit()
+            # 2. Player Chat Logic
+            elif payload.get("type") == "player_chat":
+                player_msg = payload.get("text").lower()
+                
+                # Simulated Smart AI Responses
+                if "lag" in player_msg:
+                    await manager.send_ai_message(in_game_id, "Telemetry shows stable ping. Focus on the game.")
+                elif "finished" in player_msg or "i won" in player_msg:
+                    # Trigger the Winner Announcement Logic
+                    await manager.send_ai_message(
+                        in_game_id, 
+                        f"MATCH CONCLUDED. Winner declared: {in_game_id}. Processing rewards.", 
+                        msg_type="announcement",
+                        action="trigger_payout"
+                    )
+                else:
+                    await manager.send_ai_message(in_game_id, "I am monitoring the match. Please keep the screen focused on the game.")
 
-  return {"status": "success", "checkout_request_id": checkout_request_id}
+    except WebSocketDisconnect:
+        manager.disconnect(in_game_id)
+        print(f"Player {in_game_id} disconnected.")
