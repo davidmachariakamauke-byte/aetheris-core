@@ -1,14 +1,27 @@
-from backend.app.database import Base
-from sqlalchemy import Column, Float, Integer, String
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
 
-class MatchEscrow(Base):
-  __tablename__ = "match_escrows"
+Base = declarative_base()
 
-  id = Column(Integer, primary_key=True, index=True)
-  match_id = Column(String, index=True) 
-  player_phone = Column(String, index=True)
-  in_game_id = Column(String, index=True) # NEW: E.g., Ludo username, PES ID
-  amount = Column(Float, default=10.0)
-  checkout_request_id = Column(String, unique=True, index=True)
-  status = Column(String, default="pending") 
-  mpesa_receipt = Column(String, nullable=True)
+class UserProfile(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    phone_number = Column(String, unique=True, index=True) # Safaricom M-PESA line
+    
+    # Newly added for AI multi-player tracking
+    in_game_id = Column(String, unique=True, index=True) 
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class MatchHistory(Base):
+    __tablename__ = "matches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    in_game_id = Column(String, index=True) # Ties back to UserProfile
+    match_status = Column(String, default="ongoing") # ongoing, completed, disqualified
+    ai_fraud_flag = Column(Boolean, default=False) # Flags if the AI detected modified apps
+    winner_declared = Column(Boolean, default=False)
