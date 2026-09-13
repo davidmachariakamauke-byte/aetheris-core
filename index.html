@@ -1,265 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHERIS | V8 Escrow Terminal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-dark: #030712;
-            --panel-bg: rgba(10, 17, 34, 0.7);
-            --cyan: #00f0ff;
-            --cyan-glow: rgba(0, 240, 255, 0.4);
-            --red: #ff2a2a;
-            --red-glow: rgba(255, 42, 42, 0.4);
-            --text-main: #e0e6ed;
-            --text-muted: #6b7a90;
-            --border: 1px solid rgba(0, 240, 255, 0.2);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Rajdhani', sans-serif; }
+<script>
+        // --- 1. CONFIGURATION & STATE ---
+        // Pointing directly to your active Render backend
+        const API_BASE_URL = "https://aetheris-backend-s3hu.onrender.com";
+        const WS_URL = "wss://aetheris-backend-s3hu.onrender.com/ws/referee";
         
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background-image: 
-                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px;
-        }
-
-        /* --- Header HUD --- */
-        .hud-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 30px;
-            background: linear-gradient(180deg, rgba(0, 240, 255, 0.1) 0%, transparent 100%);
-            border-bottom: var(--border);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .logo h1 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.8rem;
-            color: var(--cyan);
-            text-shadow: 0 0 10px var(--cyan-glow);
-            letter-spacing: 3px;
-        }
-
-        .sys-status {
-            display: flex;
-            gap: 15px;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-
-        .status-badge {
-            padding: 5px 12px;
-            border: var(--border);
-            background: var(--panel-bg);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .ping-dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: #00ff66; box-shadow: 0 0 10px #00ff66;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.5); opacity: 0.5; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        /* --- Main Grid Layout --- */
-        .hud-main {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr 1fr;
-            gap: 20px;
-            padding: 20px;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        .panel {
-            background: var(--panel-bg);
-            border: var(--border);
-            backdrop-filter: blur(10px);
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .panel-header {
-            padding: 12px;
-            border-bottom: var(--border);
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.9rem;
-            color: var(--cyan);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            background: rgba(0, 240, 255, 0.05);
-        }
-
-        /* --- Panel 1: AI Screen Telemetry --- */
-        .telemetry-view {
-            flex: 1;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle, rgba(0,240,255,0.1) 0%, transparent 70%);
-            overflow: hidden;
-        }
-
-        .radar-scanner {
-            width: 200px; height: 200px;
-            border: 2px solid rgba(0, 240, 255, 0.3);
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .radar-scanner::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 50%;
-            width: 50%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.4));
-            transform-origin: left center;
-            animation: scan 2s linear infinite;
-        }
-
-        @keyframes scan { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        .telemetry-status {
-            position: absolute;
-            bottom: 20px; left: 20px; right: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.8rem;
-            color: #00ff66;
-            text-shadow: 0 0 5px #00ff66;
-        }
-
-        /* --- Panel 2: Escrow & Match Hub --- */
-        .match-hub { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
-        
-        .input-group label { display: block; color: var(--cyan); margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; }
-        .input-group input {
-            width: 100%; padding: 12px;
-            background: rgba(0, 0, 0, 0.5); border: 1px solid var(--text-muted);
-            color: white; font-size: 1.1rem; border-radius: 4px; transition: 0.3s;
-        }
-        .input-group input:focus { border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); outline: none; }
-
-        .cyber-btn {
-            background: rgba(0, 240, 255, 0.1);
-            border: 1px solid var(--cyan); color: var(--cyan);
-            padding: 15px; font-size: 1.1rem; font-weight: 700;
-            cursor: pointer; transition: 0.3s;
-            text-transform: uppercase; font-family: 'Orbitron', sans-serif;
-            border-radius: 4px; position: relative; overflow: hidden;
-        }
-        .cyber-btn:hover {
-            background: var(--cyan); color: #000; box-shadow: 0 0 20px var(--cyan);
-        }
-
-        /* --- Panel 3: AI Referee Comm Link --- */
-        .chat-box { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; gap: 10px; }
-        
-        .chat-msg {
-            padding: 10px 15px; border-radius: 4px; font-size: 0.95rem; width: fit-content; max-width: 85%;
-        }
-        .msg-ai { background: rgba(0, 240, 255, 0.1); border-left: 3px solid var(--cyan); align-self: flex-start; }
-        .msg-ai.alert { border-left-color: var(--red); color: var(--red); background: rgba(255, 42, 42, 0.1); }
-        .msg-ai.win { border-left-color: #00ff66; color: #00ff66; background: rgba(0, 255, 102, 0.1); text-shadow: 0 0 5px rgba(0,255,102,0.5); }
-        
-        .msg-user { background: rgba(255, 255, 255, 0.05); border-right: 3px solid var(--text-muted); align-self: flex-end; }
-
-        .chat-input-area { display: flex; border-top: var(--border); padding: 10px; background: rgba(0,0,0,0.3); }
-        .chat-input-area input { flex: 1; background: transparent; border: none; color: white; padding: 10px; font-size: 1rem; }
-        .chat-input-area input:focus { outline: none; }
-        .chat-input-area button { background: transparent; border: none; color: var(--cyan); cursor: pointer; font-weight: bold; padding: 0 10px; }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--cyan); }
-    </style>
-</head>
-<body>
-
-    <header class="hud-header">
-        <div class="logo">
-            <h1>AETHERIS <span style="font-size: 0.8rem; vertical-align: top; color: var(--text-muted);">V8.0</span></h1>
-        </div>
-        <div class="sys-status">
-            <div class="status-badge"><div class="ping-dot"></div> WSS: SECURE</div>
-            <div class="status-badge" style="border-color: var(--cyan); color: var(--cyan);">AI REFEREE: ONLINE</div>
-        </div>
-    </header>
-
-    <main class="hud-main">
-        <!-- Panel 1: Anti-Cheat Telemetry -->
-        <div class="panel">
-            <div class="panel-header">LIVE TELEMETRY // AI VISION</div>
-            <div class="telemetry-view">
-                <div class="radar-scanner"></div>
-                <div class="telemetry-status" id="telemetry-log">
-                    > Awaiting Screen Stream...<br>
-                    > Hooking into OS frame buffer...<br>
-                    > Mod signatures unloaded.
-                </div>
-            </div>
-        </div>
-
-        <!-- Panel 2: Escrow Hub -->
-        <div class="panel">
-            <div class="panel-header">MATCH ESCROW HUB</div>
-            <div class="match-hub">
-                <div class="input-group">
-                    <label>IN-GAME ID (e.g. CODM-8942)</label>
-                    <input type="text" id="in_game_id" placeholder="Enter Player ID..." autocomplete="off">
-                </div>
-                <div class="input-group">
-                    <label>STAKE AMOUNT (KES)</label>
-                    <input type="number" id="stake_amount" placeholder="500">
-                </div>
-                <div class="input-group">
-                    <label>M-PESA DEPOSIT NUMBER</label>
-                    <input type="tel" id="mpesa_number" placeholder="07XX XXX XXX">
-                </div>
-                <button class="cyber-btn" onclick="triggerEscrow()">AUTHORIZE STK PUSH</button>
-            </div>
-        </div>
-
-        <!-- Panel 3: AI Referee Chat -->
-        <div class="panel">
-            <div class="panel-header">COMMS // AI REFEREE</div>
-            <div class="chat-box" id="chat-box">
-                <div class="chat-msg msg-ai">System initialized. I am your AI Referee. Submit your In-Game ID and fund the escrow to begin matchmaking.</div>
-            </div>
-            <div class="chat-input-area">
-                <input type="text" id="chat_input" placeholder="Message Referee...">
-                <button onclick="sendChatMessage()">SEND</button>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        // UI Logic & Animations
+        let ws;
         const chatBox = document.getElementById('chat-box');
         const telemetryLog = document.getElementById('telemetry-log');
-        
+
+        // --- 2. WEBSOCKET CONNECTION (The AI Engine) ---
+        function connectWebSocket() {
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                document.querySelector('.ping-dot').style.background = '#00ff66';
+                document.querySelector('.ping-dot').style.boxShadow = '0 0 10px #00ff66';
+                addChatMessage('ai', "WSS Uplink established. I am your AI Referee. Submit your In-Game ID and fund the escrow to begin.");
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.event === "AI_RESPONSE" || data.event === "AI_ALERT") {
+                    addChatMessage('ai', data.message, data.type);
+                } 
+                else if (data.event === "PAYMENT_SECURED") {
+                    telemetryLog.innerHTML = `
+                        > Payment Verified via Daraja.<br>
+                        > Player ${data.in_game_id} authenticated.<br>
+                        > [AI VISION] Screen stream connected.<br>
+                        <span style="color:var(--cyan)">> MATCH STARTED.</span>
+                    `;
+                    addChatMessage('ai', data.message, "win");
+                }
+            };
+
+            ws.onclose = () => {
+                document.querySelector('.ping-dot').style.background = 'red';
+                document.querySelector('.ping-dot').style.boxShadow = '0 0 10px red';
+                addChatMessage('ai', "[SYSTEM] Connection lost. Attempting to reconnect...", "alert");
+                setTimeout(connectWebSocket, 5000); // Auto-reconnect if Render spins down
+            };
+        }
+
+        // --- 3. UI FUNCTIONS ---
         function addChatMessage(sender, text, type = '') {
             const msg = document.createElement('div');
             msg.className = `chat-msg ${sender === 'ai' ? 'msg-ai' : 'msg-user'} ${type}`;
@@ -271,30 +55,30 @@
         function sendChatMessage() {
             const input = document.getElementById('chat_input');
             const text = input.value.trim();
+            
             if(!text) return;
             
             addChatMessage('user', text);
             input.value = '';
 
-            // Mock AI Response
-            setTimeout(() => {
-                if(text.toLowerCase().includes("win")) {
-                    addChatMessage('ai', "I am monitoring the match stream. Results will be announced upon conclusion.", "alert");
-                } else {
-                    addChatMessage('ai', "Acknowledged. Maintain clean gameplay. My vision algorithms are actively scanning memory buffers.");
-                }
-            }, 800);
+            // Send to FastAPI over WebSocket
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(text);
+            } else {
+                addChatMessage('ai', "[ERROR] Neural link disconnected. Message failed to send.", "alert");
+            }
         }
 
-        // Allow Enter key in chat
+        // Allow Enter key to send chat messages
         document.getElementById('chat_input').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') sendChatMessage();
         });
 
-        function triggerEscrow() {
-            const inGameId = document.getElementById('in_game_id').value;
-            const amount = document.getElementById('stake_amount').value;
-            const phone = document.getElementById('mpesa_number').value;
+        // --- 4. API TRIGGERS (Daraja Integration) ---
+        async function triggerEscrow() {
+            const inGameId = document.getElementById('in_game_id').value.trim();
+            const amount = document.getElementById('stake_amount').value.trim();
+            const phone = document.getElementById('mpesa_number').value.trim();
 
             if(!inGameId || !amount || !phone) {
                 addChatMessage('ai', "[ERROR] Missing Escrow Parameters. Check ID, Amount, and Phone Number.", "alert");
@@ -302,25 +86,32 @@
             }
 
             addChatMessage('ai', `Escrow STK Push initiated to ${phone} for KES ${amount}. Awaiting Daraja confirmation...`);
-            
-            // Mock Telemetry Update
-            setTimeout(() => {
-                telemetryLog.innerHTML = `
-                    > Payment Verified.<br>
-                    > Player ${inGameId} authenticated.<br>
-                    > [AI VISION] Screen stream connected.<br>
-                    <span style="color:var(--cyan)">> MATCH STARTED.</span>
-                `;
-                addChatMessage('ai', `FUNDS SECURED. Match for ${inGameId} is live. GLHF.`);
-                
-                // Mock Winner Announcement 10 seconds later
-                setTimeout(() => {
-                    telemetryLog.innerHTML += `<br>> Match Concluded.<br>> Zero anomalies detected.`;
-                    addChatMessage('ai', `MATCH OVER. [${inGameId}] IS THE WINNER. Releasing funds from smart escrow...`, "win");
-                }, 10000);
 
-            }, 2500);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/escrow/stk-push`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        in_game_id: inGameId,
+                        stake_amount: parseFloat(amount),
+                        mpesa_number: phone
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    addChatMessage('ai', result.message);
+                    // The WebSocket will handle the success message once the background task finishes
+                } else {
+                    addChatMessage('ai', `[API ERROR] ${result.detail || "Failed to trigger Daraja."}`, "alert");
+                }
+            } catch (error) {
+                console.error("STK Push Error:", error);
+                addChatMessage('ai', "[SYSTEM ERROR] Could not reach the backend server.", "alert");
+            }
         }
+
+        // Boot up the connection on load
+        window.onload = connectWebSocket;
     </script>
-</body>
-</html>
