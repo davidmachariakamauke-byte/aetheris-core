@@ -1,98 +1,101 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
-import json
+from pydantic import BaseModel
+import asyncio
+from typing import List
 
-# Initialize the AETHERIS Engine
-app = FastAPI(title="AETHERIS v8.0 AI Engine", version="8.0")
+# Initialize the V8 Command Engine
+app = FastAPI(title="Aetheris V8 Core API")
 
-# Configure CORS to allow your frontend (like GitHub Pages) to communicate with this Render backend
+# Allow the frontend to talk to this backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, you can replace "*" with your specific frontend domain
+    allow_origins=["*"],  # Update this to your GitHub Pages URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ==========================================
-# 1. ROOT ENDPOINT (Fixes the "Not Found" error)
-# ==========================================
-@app.get("/")
-async def root():
-    """
-    When you visit your Render URL in a browser, this will display the live status 
-    instead of throwing a 404 Not Found error.
-    """
-    return {
-        "status": "ONLINE",
-        "engine": "AETHERIS v8.0 AI Engine",
-        "message": "Backend is active. Awaiting WebSocket connections and M-PESA callbacks."
-    }
+# Hardware SMS Bridge / Admin routing line
+SYSTEM_ADMIN_NUMBER = "0748615143"
 
-# ==========================================
-# 2. WEBSOCKET MANAGER
-# ==========================================
-class MatchManager:
+# --- WEBSOCKET MANAGER (The AI Referee Comms) ---
+class ConnectionManager:
     def __init__(self):
-        self.active_matches = {}
+        self.active_connections: List[WebSocket] = []
 
-    async def connect(self, websocket: WebSocket, in_game_id: str):
+    async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_matches[in_game_id] = websocket
-        print(f"[+] Player {in_game_id} connected to AI Referee.")
+        self.active_connections.append(websocket)
 
-    def disconnect(self, in_game_id: str):
-        if in_game_id in self.active_matches:
-            del self.active_matches[in_game_id]
-            print(f"[-] Player {in_game_id} disconnected.")
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
 
-    async def send_ai_message(self, in_game_id: str, message: str, msg_type: str = "chat", action: str = None):
-        if in_game_id in self.active_matches:
-            payload = {"type": msg_type, "message": message}
-            if action:
-                payload["action"] = action
-            await self.active_matches[in_game_id].send_text(json.dumps(payload))
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            await connection.send_json(message)
 
-manager = MatchManager()
+# Global instance of the connection manager
+manager = ConnectionManager()
 
-# ==========================================
-# 3. AI REFEREE WEBSOCKET ROUTE
-# ==========================================
-@app.websocket("/ws/referee/{in_game_id}")
-async def ai_referee_endpoint(websocket: WebSocket, in_game_id: str):
-    await manager.connect(websocket, in_game_id)
+# --- PYDANTIC SCHEMAS (Strict Type Checking) ---
+class EscrowRequest(BaseModel):
+    in_game_id: str
+    stake_amount: float
+    mpesa_number: str
+
+# --- REST API: STK PUSH TRIGGER ---
+@app.post("/api/escrow/stk-push")
+async def trigger_stk_push(req: EscrowRequest, background_tasks: BackgroundTasks):
+    """
+    Receives the HUD data, saves it to DB, and triggers Safaricom Daraja.
+    """
+    # TODO: Insert SQLAlchemy DB saving logic here
+
+    # 1. Here is where you will call your mpesa_rail.py STK push function
+    # mpesa_response = await initiate_stk_push(req.mpesa_number, req.stake_amount)
+    
+    # 2. Simulate Daraja Callback for development (Removes the need to wait on M-Pesa while coding)
+    background_tasks.add_task(simulate_daraja_callback, req)
+    
+    return {"status": "success", "message": f"STK Push authorized to {req.mpesa_number}"}
+
+async def simulate_daraja_callback(req: EscrowRequest):
+    """Simulates the delay of a user entering their M-Pesa PIN, then alerts the HUD via WebSockets"""
+    await asyncio.sleep(4)  
+    await manager.broadcast({
+        "event": "PAYMENT_SECURED",
+        "in_game_id": req.in_game_id,
+        "message": f"FUNDS SECURED. Match for {req.in_game_id} is live. Vision algorithms active."
+    })
+
+# --- WEBSOCKET API: LIVE TELEMETRY & CHAT ---
+@app.websocket("/ws/referee")
+async def websocket_referee(websocket: WebSocket):
+    """
+    The persistent connection between the AI and the frontend UI.
+    """
+    await manager.connect(websocket)
     try:
         while True:
+            # Listen for messages from the user's chat input
             data = await websocket.receive_text()
-            payload = json.loads(data)
-
-            # 1. Telemetry / Screen Monitoring Logic
-            if payload.get("type") == "telemetry_frame":
-                # In the future, this is where the base64 screen frames are passed 
-                # to a Vision Model to detect mod menus or modified UIs.
-                pass 
-
-            # 2. Player Chat & Auto-Referee Logic
-            elif payload.get("type") == "player_chat":
-                player_msg = payload.get("text").lower()
+            
+            # Simulated AI NLP Processing Time
+            await asyncio.sleep(0.5)
+            
+            if "win" in data.lower():
+                await websocket.send_json({
+                    "event": "AI_ALERT", 
+                    "message": "I am monitoring the match stream. Results will be announced upon conclusion.",
+                    "type": "alert"
+                })
+            else:
+                await websocket.send_json({
+                    "event": "AI_RESPONSE", 
+                    "message": "Acknowledged. Maintain clean gameplay. My vision algorithms are actively scanning memory buffers.",
+                    "type": "normal"
+                })
                 
-                # Smart AI Responses
-                if "lag" in player_msg or "ping" in player_msg:
-                    await manager.send_ai_message(in_game_id, "Telemetry shows stable connection. Focus on the game.")
-                
-                elif "finished" in player_msg or "i won" in player_msg or "gg" in player_msg:
-                    # Trigger the Winner Announcement & Prepare Payout
-                    await manager.send_ai_message(
-                        in_game_id, 
-                        f"MATCH CONCLUDED. Winner declared: {in_game_id}. Processing M-PESA escrow payouts...", 
-                        msg_type="announcement",
-                        action="trigger_payout"
-                    )
-                    # NOTE: Once Safaricom provisions your Daraja credentials for Store 1231006, 
-                    # this is where we will trigger the B2C M-PESA payout function.
-                
-                else:
-                    await manager.send_ai_message(in_game_id, "I am monitoring the match. Keep your screen focused on the gameplay.")
-
     except WebSocketDisconnect:
-        manager.disconnect(in_game_id)
+        manager.disconnect(websocket)
